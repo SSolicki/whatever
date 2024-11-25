@@ -21,14 +21,28 @@ ARG UID=0
 ARG GID=0
 
 ######## WebUI frontend ########
-FROM --platform=$BUILDPLATFORM node:22-alpine3.20 AS build
+FROM --platform=$BUILDPLATFORM node:18-alpine AS build
 ARG BUILD_HASH
+
+# Install dependencies required for node-gyp and native modules
+RUN apk add --no-cache python3 make g++ git
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
-RUN npm ci
+# Add npm configuration and increase Node.js memory limit
+ENV NODE_OPTIONS="--max-old-space-size=4096" \
+    CYPRESS_INSTALL_BINARY=0 \
+    HUSKY_SKIP_INSTALL=1
 
+# First install dependencies
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund --prefer-offline --no-optional && \
+    # Rebuild native modules for Alpine
+    npm rebuild rollup && \
+    # Install Rollup's native dependencies explicitly
+    npm install --no-save @rollup/rollup-linux-x64-musl
+
+# Then copy the rest of the code and build
 COPY . .
 ENV APP_BUILD_HASH=${BUILD_HASH}
 RUN npm run build

@@ -1,3 +1,88 @@
-# Project workflow
+# Project Documentation
 
-[![](https://mermaid.ink/img/pako:eNq1k01rAjEQhv_KkFNLFe1N9iAUevFSRVl6Cci4Gd1ANtlmsmtF_O_N7iqtHxR76ClhMu87zwyZvcicIpEIpo-KbEavGjceC2lL9EFnukQbIGXygNye5y9TY7DAZTpZLsjXXVYXg3dapRM4hh9mu5A7-3hTfSXtAtJK21Tsj8dPl3USmJZkGVbebWNKD2rNOjAYl6HJHYdkNBwNpb3U9aNZvzFNYE6h8tFiSyZzBUGJG4K1dwVwTSYQrCptlLRvLt5dA5i2la5Ruk51Ux0VKQjuxPVbAwuyiuFlNgHfzJ5DoxtgqQf1813gnZRLZ5lAYcD7WT1lpGtiQKug9C4jZrrp-Fd-1-Y1bdzo4dvnZDLz7lPHyj8sOgfg4x84E7RTuEaZt8yRZqtDfgT_rwG2u3Dv_ERPFOQL1Cqu2F5aAClCTgVJkcSrojVWJkgh7SGmYhXcYmczkQRfUU9UZfQ4baRI1miYDl_QqlPg?type=png)](https://mermaid.live/edit#pako:eNq1k01rAjEQhv_KkFNLFe1N9iAUevFSRVl6Cci4Gd1ANtlmsmtF_O_N7iqtHxR76ClhMu87zwyZvcicIpEIpo-KbEavGjceC2lL9EFnukQbIGXygNye5y9TY7DAZTpZLsjXXVYXg3dapRM4hh9mu5A7-3hTfSXtAtJK21Tsj8dPl3USmJZkGVbebWNKD2rNOjAYl6HJHYdkNBwNpb3U9aNZvzFNYE6h8tFiSyZzBUGJG4K1dwVwTSYQrCptlLRvLt5dA5i2la5Ruk51Ux0VKQjuxPVbAwuyiuFlNgHfzJ5DoxtgqQf1813gnZRLZ5lAYcD7WT1lpGtiQKug9C4jZrrp-Fd-1-Y1bdzo4dvnZDLz7lPHyj8sOgfg4x84E7RTuEaZt8yRZqtDfgT_rwG2u3Dv_ERPFOQL1Cqu2F5aAClCTgVJkcSrojVWJkgh7SGmYhXcYmczkQRfUU9UZfQ4baRI1miYDl_QqlPg)
+## Overview
+
+A modern, real-time chat application built with SvelteKit, featuring streaming responses, multi-model support, and collaborative features.
+
+## Core Features
+
+### Chat System
+- Real-time streaming responses
+- Multi-model chat support
+- File attachments and processing
+- Message rating and annotation
+- Chat history and state management
+- Share and export capabilities
+- Advanced folder organization with:
+  * Drag and drop support
+  * Virtual rendering for large folders
+  * Keyboard navigation
+  * Screen reader support
+  * Position-based hierarchy
+
+### Knowledge Store
+- Structured knowledge management
+- File attachment support
+- Vector-based semantic search
+- Secure access control
+- Integration with chat system
+
+### Real-time Collaboration
+- Collaborative document editing
+- Real-time presence indicators
+- WebSocket-based synchronization
+- Conflict resolution
+
+### User Interface
+- Responsive design for mobile and desktop
+- Dark/light theme support
+- Customizable chat controls
+- Accessibility features
+- Keyboard shortcuts
+
+## Project Structure
+
+```
+src/
+├── lib/
+│   ├── components/
+│   │   ├── chat/          # Chat components
+│   │   ├── common/        # Shared components
+│   │   └── layout/        # Layout components
+│   ├── apis/              # API integrations
+│   ├── services/          # Business logic
+│   ├── stores/            # State management
+│   ├── types/             # TypeScript types
+│   └── utils/             # Utility functions
+└── routes/                # SvelteKit routes
+```
+
+## Documentation
+
+- [API Reference](./api-reference.md) - API endpoints and usage
+- [Backend Architecture](./backend.md) - Server implementation
+- [Contributing Guide](./CONTRIBUTING.md) - Development guidelines
+- [Testing Guide](./TESTING.md) - Testing procedures
+- [Changelog](./CHANGELOG.md) - Version history
+- [Build Guide](./BUILD.md) - Build instructions
+- [Collaboration](./collaborate.md) - Real-time features
+
+## Quick Links
+
+- [Getting Started](./BUILD.md#getting-started)
+- [API Documentation](./api-reference.md#endpoints)
+- [Contributing](./CONTRIBUTING.md#guidelines)
+- [Testing](./TESTING.md#running-tests)
+
+## Technology Stack
+
+- Frontend: SvelteKit, TypeScript
+- Backend: Node.js, WebSocket
+- Database: PostgreSQL
+- Real-time: Socket.IO
+- UI: TailwindCSS
+- Testing: Vitest, Playwright
+
+## License
+
+MIT License - See [LICENSE](./LICENSE) for details

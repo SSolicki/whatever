@@ -47,8 +47,14 @@
 	export let atSelectedModel: Model | undefined;
 	export let selectedModels: [''];
 
-	export let history;
-
+	export let history: {
+    	currentId: string | null;
+    	messages: Record<string, { done: boolean; [key: string]: any }>;
+	} = {
+    	currentId: null,
+    	messages: {}
+	};
+	
 	export let prompt = '';
 	export let files = [];
 

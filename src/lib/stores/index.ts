@@ -1,7 +1,15 @@
 import { APP_NAME } from '$lib/constants';
 import { type Writable, writable } from 'svelte/store';
 import type { GlobalModelConfig, ModelConfig } from '$lib/apis';
-import type { Banner } from '$lib/types';
+import type { 
+	Banner, 
+	Model, 
+	Config, 
+	SessionUser, 
+	Settings, 
+	Prompt, 
+	Document 
+} from '$lib/types';
 import type { Socket } from 'socket.io-client';
 
 // Backend
@@ -51,152 +59,3 @@ export const showCallOverlay = writable(false);
 export const temporaryChatEnabled = writable(false);
 export const scrollPaginationEnabled = writable(false);
 export const currentChatPage = writable(1);
-
-export type Model = OpenAIModel | OllamaModel;
-
-type BaseModel = {
-	id: string;
-	name: string;
-	info?: ModelConfig;
-	owned_by: 'ollama' | 'openai' | 'arena';
-};
-
-export interface OpenAIModel extends BaseModel {
-	owned_by: 'openai';
-	external: boolean;
-	source?: string;
-}
-
-export interface OllamaModel extends BaseModel {
-	owned_by: 'ollama';
-	details: OllamaModelDetails;
-	size: number;
-	description: string;
-	model: string;
-	modified_at: string;
-	digest: string;
-	ollama?: {
-		name?: string;
-		model?: string;
-		modified_at: string;
-		size?: number;
-		digest?: string;
-		details?: {
-			parent_model?: string;
-			format?: string;
-			family?: string;
-			families?: string[];
-			parameter_size?: string;
-			quantization_level?: string;
-		};
-		urls?: number[];
-	};
-}
-
-type OllamaModelDetails = {
-	parent_model: string;
-	format: string;
-	family: string;
-	families: string[] | null;
-	parameter_size: string;
-	quantization_level: string;
-};
-
-type Settings = {
-	models?: string[];
-	conversationMode?: boolean;
-	speechAutoSend?: boolean;
-	responseAutoPlayback?: boolean;
-	audio?: AudioSettings;
-	showUsername?: boolean;
-	notificationEnabled?: boolean;
-	title?: TitleSettings;
-	splitLargeDeltas?: boolean;
-	chatDirection: 'LTR' | 'RTL';
-
-	system?: string;
-	requestFormat?: string;
-	keepAlive?: string;
-	seed?: number;
-	temperature?: string;
-	repeat_penalty?: string;
-	top_k?: string;
-	top_p?: string;
-	num_ctx?: string;
-	num_batch?: string;
-	num_keep?: string;
-	options?: ModelOptions;
-};
-
-type ModelOptions = {
-	stop?: boolean;
-};
-
-type AudioSettings = {
-	STTEngine?: string;
-	TTSEngine?: string;
-	speaker?: string;
-	model?: string;
-	nonLocalVoices?: boolean;
-};
-
-type TitleSettings = {
-	auto?: boolean;
-	model?: string;
-	modelExternal?: string;
-	prompt?: string;
-};
-
-type Prompt = {
-	command: string;
-	user_id: string;
-	title: string;
-	content: string;
-	timestamp: number;
-};
-
-type Document = {
-	collection_name: string;
-	filename: string;
-	name: string;
-	title: string;
-};
-
-type Config = {
-	status: boolean;
-	name: string;
-	version: string;
-	default_locale: string;
-	default_models: string;
-	default_prompt_suggestions: PromptSuggestion[];
-	features: {
-		auth: boolean;
-		auth_trusted_header: boolean;
-		enable_api_key: boolean;
-		enable_signup: boolean;
-		enable_login_form: boolean;
-		enable_web_search?: boolean;
-		enable_image_generation: boolean;
-		enable_admin_export: boolean;
-		enable_admin_chat_access: boolean;
-		enable_community_sharing: boolean;
-	};
-	oauth: {
-		providers: {
-			[key: string]: string;
-		};
-	};
-};
-
-type PromptSuggestion = {
-	content: string;
-	title: [string, string];
-};
-
-type SessionUser = {
-	id: string;
-	email: string;
-	name: string;
-	role: string;
-	profile_image_url: string;
-};
