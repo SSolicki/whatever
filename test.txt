@@ -1,1 +1,1 @@
-Test commit for release pipeline 
+Test commit for frontend integration 
