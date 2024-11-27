@@ -1,0 +1,140 @@
+name: Main Pipeline (Production)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  ENVIRONMENT: production
+
+permissions:
+  contents: write
+  pull-requests: write
+  deployments: write
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          npm ci
+          
+      - name: Run unit tests
+        run: |
+          pytest tests/
+          npm run test
+        
+      - name: Run security scans
+        uses: snyk/actions/python@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+          
+      - name: Run performance tests
+        run: |
+          pytest tests/performance/
+          npm run test:performance
+
+  create-release:
+    needs: test
+    name: Create Release
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.create_release.outputs.html_url }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Get version from package.json
+        id: get_version
+        run: |
+          VERSION=$(jq -r '.version' package.json)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Extract CHANGELOG
+        id: changelog
+        run: |
+          CHANGELOG_CONTENT=$(awk 'BEGIN {print_section=0;} /^## \[/ {if (print_section == 0) {print_section=1;} else {exit;}} print_section {print;}' CHANGELOG.md)
+          echo "content<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGELOG_CONTENT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub release
+        id: create_release
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const release = await github.rest.repos.createRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag_name: `v${process.env.VERSION}`,
+              name: `v${process.env.VERSION}`,
+              body: process.env.CHANGELOG,
+              prerelease: false
+            });
+            return release.data;
+        env:
+          VERSION: ${{ steps.get_version.outputs.version }}
+          CHANGELOG: ${{ steps.changelog.outputs.content }}
+
+  deploy:
+    needs: [test, create-release]
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    concurrency: production_environment
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-2
+          
+      - name: Deploy Blue Environment
+        id: deploy
+        run: |
+          ./scripts/deploy-blue.sh
+          echo "url=$(./scripts/get-deployment-url.sh blue)" >> $GITHUB_OUTPUT
+          
+      - name: Health Check Blue
+        id: health_check
+        run: |
+          ./scripts/health-check.sh blue
+          
+      - name: Switch Traffic
+        id: switch_traffic
+        if: success()
+        run: |
+          ./scripts/switch-traffic.sh blue
+          
+      - name: Monitor Deployment
+        run: |
+          ./scripts/monitor-deployment.sh
+          
+      - name: Rollback on Failure
+        if: failure()
+        run: |
+          ./scripts/rollback.sh

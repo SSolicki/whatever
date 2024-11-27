@@ -1,0 +1,64 @@
+name: Feature Team Pipeline
+
+on:
+  push:
+    branches: [ 'teams/feature/*' ]
+  pull_request:
+    branches: [ 'teams/feature/*' ]
+
+jobs:
+  test:
+    name: Feature Team Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup environment
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
+      - name: Install dependencies
+        run: |
+          npm ci
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+          
+      - name: Run feature-specific tests
+        run: |
+          pytest tests/features/
+          npm run test:features
+          
+      - name: Run integration tests
+        run: |
+          pytest tests/integration/
+          npm run test:integration
+          
+      - name: Run performance tests
+        run: |
+          pytest tests/performance/
+          npm run test:performance
+          
+  deploy:
+    needs: test
+    name: Deploy to Development Environment
+    runs-on: ubuntu-latest
+    environment:
+      name: development
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Deploy to development
+        run: |
+          # Development environment deployment
+          ./scripts/deploy-dev.sh feature
+          
+      - name: Setup feature preview
+        run: |
+          # Setup feature preview environment
+          ./scripts/setup-feature-preview.sh

@@ -1,13 +1,17 @@
-name: Create and publish Docker images with specific build args
+name: Create and publish Docker images
 
 on:
-  workflow_dispatch:
   push:
     branches:
       - main
-      - dev
+      - release
     tags:
       - v*
+  pull_request:
+    branches:
+      - main
+      - release
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
@@ -18,6 +22,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    environment:
+      name: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
     strategy:
       fail-fast: false
       matrix:

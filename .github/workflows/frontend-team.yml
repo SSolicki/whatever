@@ -1,0 +1,52 @@
+name: Frontend Team Pipeline
+
+on:
+  push:
+    branches: [ 'teams/frontend/*' ]
+  pull_request:
+    branches: [ 'teams/frontend/*' ]
+
+jobs:
+  test:
+    name: Frontend Team Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Run unit tests
+        run: npm run test:unit
+        
+      - name: Run component tests
+        run: npm run test:components
+        
+      - name: Run linting
+        run: |
+          npm run lint
+          npm run prettier:check
+          
+  deploy:
+    needs: test
+    name: Deploy to Development Environment
+    runs-on: ubuntu-latest
+    environment:
+      name: development
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Deploy to development
+        run: |
+          # Development environment deployment
+          ./scripts/deploy-dev.sh frontend
+          
+      - name: Generate component preview
+        run: |
+          npm run storybook:build
+          ./scripts/deploy-storybook.sh
