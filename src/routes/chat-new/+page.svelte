@@ -4,7 +4,7 @@
 	import { goto } from '$app/navigation';
 	import { chatId, chats } from '$lib/stores';
 
-	import Chat from '$lib/components/chat/Chat.new.svelte';
+	import Chat from '$lib/components/chat copy 2/Chat.new.svelte';
 
 	let loaded = false;
 

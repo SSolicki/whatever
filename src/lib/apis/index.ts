@@ -1075,3 +1075,5 @@ export const updateModelConfig = async (token: string, config: GlobalModelConfig
 
 	return res;
 };
+
+export { processWeb, processYoutubeVideo } from './retrieval';
