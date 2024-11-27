@@ -1,141 +1,177 @@
-# Branching Strategy Implementation Guide
+# Branching Strategy
 
-## Initial Setup
+## Branch Hierarchy
 
-1. Create Main Branches
-```bash
-# Ensure you're starting with a clean main branch
-git checkout main
-git pull origin main
+Main (Production)
+└── Release (Staging)
+    ├── Teams
+    │   ├── Frontend
+    │   │   ├── SubTeam1
+    │   │   ├── SubTeam2
+    │   │   └── SubTeam3
+    │   ├── Backend
+    │   │   ├── SubTeam1
+    │   │   ├── SubTeam2
+    │   │   └── SubTeam3
+    │   └── Feature
+    │       ├── SubTeam1
+    │       ├── SubTeam2
+    │       └── SubTeam3
+    └── Integration
+        ├── Frontend
+        ├── Backend
+        └── Feature
+└── Bugs
+    ├── SubTeam1
+    ├── SubTeam2
+    └── SubTeam3
 
-# Create release branch
-git checkout -b release
-git push -u origin release
+## Branch Descriptions
 
-# Create develop branch
-git checkout -b develop
-git push -u origin develop
-```
+### Main Branch
+- Production-ready code
+- Deployed to production environment
+- Protected branch requiring two approvals
+- All tests must pass
+- Automated deployment to production
 
-2. Create Sub-Team-1 Structure
-```bash
-# Create sub-team-1 branches for each team
-git checkout develop
+### Release Branch
+- Staging environment
+- Integration testing
+- Protected branch requiring one approval
+- Automated deployment to staging
+- Merges from Integration branches
 
-# Frontend sub-team-1
-git checkout -b sub/frontend/sub-team-1/initial-setup
-git push -u origin sub/frontend/sub-team-1/initial-setup
+### Teams Branches
+Teams branches represent different development streams:
 
-# Backend sub-team-1
-git checkout develop
-git checkout -b sub/backend/sub-team-1/initial-setup
-git push -u origin sub/backend/sub-team-1/initial-setup
+#### Frontend Teams
+- Path: `teams/frontend/*`
+- Frontend development work
+- Component development
+- UI/UX improvements
+- Individual team workspaces
 
-# Integration sub-team-1
-git checkout develop
-git checkout -b sub/integration/sub-team-1/initial-setup
-git push -u origin sub/integration/sub-team-1/initial-setup
+#### Backend Teams
+- Path: `teams/backend/*`
+- Backend development work
+- API development
+- Database changes
+- Service implementations
 
-# Refactoring sub-team-1
-git checkout develop
-git checkout -b sub/refactoring/sub-team-1/initial-setup
-git push -u origin sub/refactoring/sub-team-1/initial-setup
-```
+#### Feature Teams
+- Path: `teams/feature/*`
+- Cross-functional feature development
+- New feature implementations
+- Major enhancements
+
+### Integration Branches
+Integration branches consolidate work from team branches:
+
+#### Frontend Integration
+- Path: `integration/frontend`
+- Consolidates frontend team work
+- Integration testing for frontend
+- UI/UX validation
+
+#### Backend Integration
+- Path: `integration/backend`
+- Consolidates backend team work
+- API integration testing
+- Service integration validation
+
+#### Feature Integration
+- Path: `integration/feature`
+- Consolidates feature work
+- End-to-end testing
+- Feature validation
+
+### Bugs Branch
+- Path: `bugs/*`
+- Hotfix development
+- Critical bug fixes
+- Can merge directly to main (with approval)
+- Immediate deployment capability
 
 ## Branch Protection Rules
 
-Set up the following branch protection rules in your Git repository:
+### Main Branch
+- Requires 2 approvals
+- Must be up to date before merging
+- Status checks must pass
+- No direct pushes
+- Administrators included
 
-1. `main` branch:
-   - Require pull request reviews before merging
-   - Require status checks to pass
-   - Require linear history
-   - Include administrators in these restrictions
+### Release Branch
+- Requires 1 approval
+- Must be up to date before merging
+- Status checks must pass
+- No direct pushes
 
-2. `release` branch:
-   - Require pull request reviews before merging
-   - Require status checks to pass
-   - Allow auto-merge when all checks pass
+### Integration Branches
+- Requires 1 approval
+- Status checks must pass
+- Team lead review required
 
-3. `develop` branch:
-   - Require pull request reviews before merging
-   - Require status checks to pass
+### Team Branches
+- Basic protection
+- Linting checks required
+- Unit tests must pass
 
 ## Workflow Guidelines
 
-1. Sub-Team Work:
-   - Create feature branches from sub-team branches:
-     ```bash
-     git checkout sub/[team]/sub-team-1/initial-setup
-     git checkout -b feature/[team]/sub-team-1/[feature-name]
-     ```
+### Creating New Features
+1. Create branch from appropriate team branch
+2. Develop and test locally
+3. Push to team branch
+4. Create PR to integration branch
+5. After integration testing, merge to release
+6. Finally, merge to main
 
-2. Integration Process:
-   - Merge feature branches into sub-team branches
-   - Merge sub-team branches into develop
-   - Merge develop into release after testing
-   - Merge release into main for production
+### Bug Fixes
+1. Create branch from bugs/*
+2. Implement fix
+3. Test thoroughly
+4. Create PR to main
+5. After approval, merge and deploy
 
-3. Hotfix Process:
-   ```bash
-   git checkout main
-   git checkout -b hotfix/[issue-name]
-   # After fixing and testing
-   git checkout main
-   git merge hotfix/[issue-name]
-   git checkout develop
-   git merge hotfix/[issue-name]
-   ```
+### Release Process
+1. Merge integration branches to release
+2. Run integration tests
+3. Deploy to staging
+4. Verify in staging
+5. Create PR to main
+6. Deploy to production
 
-## Team Automation Commands
+## Branch Naming Convention
 
-1. Create new sub-team branch:
-```bash
-create-subteam --team [team-name] --subteam sub-team-1 --branch sub/[team]/sub-team-1/[task-name]
-```
+### Team Branches
+- Frontend: `teams/frontend/subteam<N>`
+- Backend: `teams/backend/subteam<N>`
+- Feature: `teams/feature/subteam<N>`
 
-2. Add team members:
-```bash
-add-member --team [team-name] --subteam sub-team-1 --user [username]
-```
+### Integration Branches
+- Frontend: `integration/frontend`
+- Backend: `integration/backend`
+- Feature: `integration/feature`
 
-3. Generate team pipelines:
-```bash
-generate-pipeline --branch sub/[team]/sub-team-1/[task-name] --tests [test-types]
-```
+### Bug Branches
+- Format: `bugs/subteam<N>`
 
-## Branch Naming Conventions
+## Commit Guidelines
+- Use conventional commits
+- Include ticket number
+- Keep commits focused
+- Write clear messages
 
-1. Feature branches:
-   - `feature/[team]/sub-team-1/[feature-name]`
-   - Example: `feature/frontend/sub-team-1/login-redesign`
+## Pull Request Process
+1. Create PR to appropriate branch
+2. Add description and context
+3. Link related issues
+4. Request reviews
+5. Address feedback
+6. Merge when approved
 
-2. Sub-team branches:
-   - `sub/[team]/sub-team-1/[task-name]`
-   - Example: `sub/backend/sub-team-1/api-integration`
-
-3. Hotfix branches:
-   - `hotfix/[issue-name]`
-   - Example: `hotfix/security-patch-auth`
-
-## Merging Requirements
-
-1. Feature to Sub-team branch:
-   - All unit tests pass
-   - Code review approved
-   - No merge conflicts
-
-2. Sub-team to Develop:
-   - All integration tests pass
-   - Cross-team review approved
-   - Documentation updated
-
-3. Develop to Release:
-   - All E2E tests pass
-   - Performance tests pass
-   - Security scans complete
-
-4. Release to Main:
-   - All production readiness checks pass
-   - Final approval from team leads
-   - Release notes prepared
+## Related Documentation
+- For deployment procedures and environment setup, see [DEPLOYMENT.md](DEPLOYMENT.md)
+- For CI/CD pipeline details and configurations, see [CI-CD.md](CI-CD.md)
