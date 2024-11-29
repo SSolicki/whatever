@@ -1,236 +1,153 @@
-# Image Generation Implementation Guide
+# ComfyUI Integration Plan
 
 ## Overview
-This document outlines the high-level implementation steps for integrating either ComfyUI or Automatic1111 into the Open WebUI platform.
+This document outlines the high-level integration plan for ComfyUI into the Open WebUI platform, focusing on leveraging existing infrastructure and patterns.
 
-## ComfyUI Implementation
+## Architecture Overview
 
-### Phase 1: Infrastructure Setup
+### 1. Core Components
+- **WebSocket Manager**: Extend existing socket infrastructure for real-time updates
+- **Image Generation Service**: Build on current image generation patterns
+- **Workflow Management**: New component for ComfyUI workflow handling
+- **Configuration System**: Extend current config management
 
-1. **Docker Configuration**
-   ```yaml
-   # Add to docker-compose.dev.yaml
-   services:
-     comfyui:
-       image: comfyui/comfyui
-       ports:
-         - "8188:8188"
-       volumes:
-         - ./data/comfyui:/data
-         - ./models:/models
-       environment:
-         - NVIDIA_VISIBLE_DEVICES=all
-   ```
+### 2. Integration Points
 
-2. **Environment Configuration**
-   - Add ComfyUI-specific environment variables to `.env.dev`
-   - Configure model paths and GPU settings
-   - Set up networking between services
+#### Backend Integration
+1. **Image Generation Service**
+   - Extend current image generation endpoints
+   - Add ComfyUI-specific workflow handling
+   - Integrate with existing authentication system
+   - Reuse image caching and storage mechanisms
 
-### Phase 2: Backend Integration
+2. **WebSocket Layer**
+   - Leverage existing WebSocket infrastructure
+   - Add ComfyUI-specific message handlers
+   - Integrate with current session management
+   - Reuse error handling patterns
 
-1. **Create Backend Module Structure**
-   ```
-   backend/open_webui/apps/comfyui/
-   ├── __init__.py
-   ├── router.py
-   ├── service.py
-   ├── models.py
-   ├── config.py
-   └── utils/
-       ├── workflow.py
-       └── queue.py
-   ```
+3. **Configuration Management**
+   - Extend current environment configuration
+   - Add ComfyUI-specific settings
+   - Maintain backward compatibility
+   - Support dynamic configuration updates
 
-2. **Implement Core Services**
-   - API client for ComfyUI communication
-   - Workflow management service
-   - Queue management service
-   - Error handling and logging
+#### Frontend Integration
+1. **API Layer**
+   - Extend current image generation API
+   - Add WebSocket connection handling
+   - Maintain consistent error handling
+   - Reuse authentication patterns
 
-3. **Create API Endpoints**
-   - Workflow execution endpoints
-   - Status checking endpoints
-   - Model management endpoints
-   - Configuration endpoints
+2. **UI Components**
+   - Build on existing image generation UI
+   - Add workflow visualization (optional)
+   - Integrate progress indicators
+   - Maintain consistent user experience
 
-### Phase 3: Frontend Implementation
+## Implementation Strategy
 
-1. **Component Structure**
-   ```
-   src/lib/components/comfyui/
-   ├── WorkflowEditor/
-   ├── NodeGraph/
-   ├── ParameterControls/
-   ├── ImagePreview/
-   └── stores/
-       ├── workflow.ts
-       └── generation.ts
-   ```
+### Phase 1: Foundation
+1. **Infrastructure Setup**
+   - Deploy ComfyUI container
+   - Configure networking
+   - Set up model storage
+   - Integrate with monitoring
 
-2. **UI Development**
-   - Implement workflow editor interface
-   - Create node graph visualization
-   - Build parameter control panels
-   - Develop image preview components
+2. **Core Integration**
+   - Extend image generation service
+   - Add basic WebSocket support
+   - Implement configuration management
+   - Set up error handling
 
-3. **State Management**
-   - Workflow state management
-   - Generation queue management
-   - Results handling
-   - Error state management
+### Phase 2: Feature Implementation
+1. **Basic Features**
+   - Text-to-image generation
+   - Model selection
+   - Basic parameter control
+   - Progress tracking
 
-### Phase 4: Integration Testing
+2. **Advanced Features**
+   - Workflow management
+   - Custom node support
+   - Advanced parameter tuning
+   - Real-time preview
 
-1. **Test Suite Development**
-   - Unit tests for backend services
-   - Integration tests for API endpoints
-   - Frontend component tests
-   - End-to-end workflow tests
+### Phase 3: Enhancement
+1. **Performance Optimization**
+   - WebSocket connection pooling
+   - Image caching strategy
+   - Resource management
+   - Load balancing
 
-2. **Performance Testing**
-   - Load testing for concurrent generations
-   - Resource usage monitoring
-   - Response time optimization
-   - Memory leak detection
+2. **User Experience**
+   - Progress indicators
+   - Error feedback
+   - Parameter validation
+   - Help documentation
 
-## Automatic1111 Implementation
+## Technical Considerations
 
-### Phase 1: Infrastructure Setup
+### 1. Code Reuse
+- Leverage `IMAGES_API_BASE_URL` pattern
+- Reuse authentication middleware
+- Extend existing API structure
+- Maintain error handling patterns
 
-1. **Docker Configuration**
-   ```yaml
-   # Add to docker-compose.dev.yaml
-   services:
-     automatic1111:
-       image: automatic1111/stable-diffusion-webui
-       ports:
-         - "7860:7860"
-       volumes:
-         - ./models:/models
-         - ./outputs:/outputs
-       environment:
-         - COMMANDLINE_ARGS=--api --listen
-   ```
+### 2. Compatibility
+- Maintain API compatibility
+- Support graceful fallback
+- Handle version differences
+- Manage dependencies
 
-2. **Environment Setup**
-   - Configure API access
-   - Set up model directories
-   - Configure GPU settings
-   - Set up shared storage
+### 3. Performance
+- Optimize WebSocket connections
+- Implement efficient caching
+- Manage resource utilization
+- Monitor system health
 
-### Phase 2: Backend Integration
+### 4. Security
+- Extend current authentication
+- Validate user permissions
+- Secure WebSocket connections
+- Protect sensitive data
 
-1. **Create Backend Module Structure**
-   ```
-   backend/open_webui/apps/sd_webui/
-   ├── __init__.py
-   ├── router.py
-   ├── service.py
-   ├── models.py
-   ├── config.py
-   └── utils/
-       ├── api.py
-       └── process.py
-   ```
+## Development Workflow
 
-2. **Implement Core Services**
-   - API proxy service
-   - Image generation service
-   - Model management service
-   - Configuration service
+1. **Initial Setup**
+   - Configure development environment
+   - Set up test infrastructure
+   - Establish monitoring
+   - Create documentation
 
-3. **Create API Endpoints**
-   - Text-to-image endpoints
-   - Image-to-image endpoints
-   - Model management endpoints
-   - Configuration endpoints
+2. **Iterative Development**
+   - Implement core features
+   - Add advanced capabilities
+   - Optimize performance
+   - Enhance user experience
 
-### Phase 3: Frontend Implementation
-
-1. **Component Structure**
-   ```
-   src/lib/components/sd_webui/
-   ├── GenerationForm/
-   ├── ModelSelector/
-   ├── SettingsPanel/
-   ├── Gallery/
-   └── stores/
-       ├── generation.ts
-       └── settings.ts
-   ```
-
-2. **UI Development**
-   - Implement generation form
-   - Create model selection interface
-   - Build settings management panel
-   - Develop gallery view
-
-3. **State Management**
-   - Generation state management
-   - Settings state management
-   - Gallery state management
-   - Error handling
-
-### Phase 4: Testing and Optimization
-
-1. **Test Implementation**
-   - API integration tests
-   - UI component tests
-   - End-to-end generation tests
-   - Error handling tests
-
-2. **Performance Optimization**
-   - Response time optimization
-   - Resource usage monitoring
-   - Memory management
-   - Cache implementation
-
-## Deployment Steps
-
-### 1. Development Environment
-- Set up local development environment
-- Configure Docker containers
-- Install required dependencies
-- Set up development databases
-
-### 2. Staging Environment
-- Deploy to staging server
-- Configure production-like settings
-- Perform integration testing
-- Monitor resource usage
-
-### 3. Production Environment
-- Deploy to production server
-- Configure production settings
-- Set up monitoring
-- Implement backup procedures
-
-## Monitoring and Maintenance
-
-1. **Setup Monitoring**
-   - Resource usage monitoring
-   - Error tracking
-   - Performance monitoring
-   - Queue monitoring
-
-2. **Maintenance Procedures**
-   - Regular backups
-   - Log rotation
-   - Model updates
-   - Security updates
-
-3. **Documentation**
-   - API documentation
-   - Deployment guides
-   - Troubleshooting guides
-   - User guides
+3. **Quality Assurance**
+   - Unit testing
+   - Integration testing
+   - Performance testing
+   - Security validation
 
 ## Next Steps
 
-1. Choose preferred implementation approach
-2. Set up development environment
-3. Begin Phase 1 implementation
-4. Create detailed technical specifications
-5. Establish development timeline
-6. Assign resources and responsibilities
+1. **Immediate Actions**
+   - Set up ComfyUI container
+   - Extend image generation service
+   - Implement basic WebSocket support
+   - Update configuration system
+
+2. **Short-term Goals**
+   - Basic image generation
+   - Progress tracking
+   - Error handling
+   - Initial UI integration
+
+3. **Long-term Goals**
+   - Advanced workflow support
+   - Performance optimization
+   - Enhanced user experience
+   - Comprehensive documentation
