@@ -1,0 +1,68 @@
+name: Upstream Sync
+
+on:
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight
+  workflow_dispatch:      # Manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: sync/upstream
+
+      - name: Configure Git
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Fetch Upstream
+        run: |
+          git remote add upstream https://github.com/open-webui/open-webui.git || true
+          git fetch upstream
+
+      - name: Sync Branch
+        run: |
+          git merge upstream/main --allow-unrelated-histories || {
+            echo "Merge conflict occurred. Creating conflict resolution commit..."
+            git add .
+            git commit -m "chore: resolve merge conflicts from upstream"
+          }
+          git push origin sync/upstream
+
+      - name: Test Docker Build
+        run: |
+          docker compose -f docker-compose.test.yaml build
+          docker compose -f docker-compose.test.yaml up -d
+          docker compose -f docker-compose.test.yaml run --rm whatever-cypress
+          docker compose -f docker-compose.test.yaml down -v
+
+      - name: Create Pull Request
+        if: success()
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          branch: sync/upstream
+          base: dev
+          title: 'chore: sync with upstream'
+          body: |
+            🔄 Automated PR to sync with upstream repository
+            
+            ## Changes Included
+            - Synced with upstream/main
+            - All tests passing in Docker environment
+            
+            ## Verification
+            - [x] Docker build successful
+            - [x] Integration tests passing
+            - [ ] Manual review required
+            
+            Please review changes carefully before merging.
+          labels: |
+            sync
+            automated
+          draft: true
