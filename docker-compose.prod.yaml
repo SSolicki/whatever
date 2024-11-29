@@ -33,6 +33,14 @@ services:
       - NODE_ENV=production
       - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}
       - OLLAMA_BASE_URL=http://ollama-prod:11434
+      - ENABLE_RAG_WEB_SEARCH=true
+      - RAG_WEB_SEARCH_ENGINE=searxng
+      - RAG_WEB_SEARCH_RESULT_COUNT=3
+      - RAG_WEB_SEARCH_CONCURRENT_REQUESTS=10
+      - SEARXNG_QUERY_URL=http://searxng-prod:8080/search?q=<query>
+      - DATABASE_URL=postgresql://whatever:${DB_PASSWORD}@db:5432/whatever
+      - OPEN_AI_API_KEY=${OPENAI_API_KEY}
+      - CHROMA_API_KEY=${CHROMA_API_KEY}
     volumes:
       - whatever-prod:/app/data
     ports:
@@ -40,6 +48,9 @@ services:
     depends_on:
       - ollama
       - backend
+      - searxng
+      - chromadb
+      - db
     networks:
       - whatever_network_prod
     restart: unless-stopped
@@ -64,10 +75,67 @@ services:
     entrypoint: ["/bin/bash"]
     command: ["/app/backend/start.sh"]
 
+  chromadb:
+    hostname: chromadb
+    image: chromadb/chroma:0.5.15
+    container_name: chromadb-prod
+    volumes:
+      - ./data/chromadb:/chroma/chroma
+    environment:
+      - IS_PERSISTENT=TRUE
+      - ALLOW_RESET=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+    ports: 
+      - "8000:8000"
+    networks:
+      - whatever_network_prod
+    restart: unless-stopped
+    healthcheck: 
+      test: ["CMD-SHELL", "curl localhost:8000/api/v1/heartbeat || exit 1"]
+      interval: 10s
+      retries: 2
+      start_period: 5s
+      timeout: 10s
+
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng-prod
+    networks:
+      - whatever_network_prod
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./searxng:/etc/searxng
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+    security_opt:
+      - no-new-privileges:true
+
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: whatever
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: whatever
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - whatever_network_prod
+    restart: unless-stopped
+
 volumes:
   ollama-prod:
   whatever-prod:
   whatever-backend-prod:
+  chroma-data:
+  searxng-data:
+  postgres_data:
 
 networks:
   whatever_network_prod:
