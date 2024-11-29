@@ -41,7 +41,8 @@ This phase implements branch protection rules and code ownership requirements to
   - Required status checks:
     - [ ] Format Backend
     - [ ] Frontend Build
-    - [ ] Integration Test
+    - [ ] Integration Test (Docker)
+  - [ ] Require conversation resolution
   - [ ] Include administrators
   - [ ] Allow force pushes (temporary)
 
@@ -53,13 +54,15 @@ This phase implements branch protection rules and code ownership requirements to
   ```
 - [ ] Configure rules:
   - Required status checks:
-    - [ ] Integration Test
     - [ ] Format Backend
     - [ ] Frontend Build
+    - [ ] Integration Test (Docker)
   - [ ] Require pull request reviews
-  - [ ] Require approval from code owners
+    - [ ] Required approvers: 1
+    - [ ] Dismiss stale reviews
+  - [ ] Require conversation resolution
   - [ ] Include administrators
-  - [ ] No force push allowed
+  - [ ] Allow force pushes (temporary)
 
 ### Main Branch Protection
 - [ ] Enable branch protection:
@@ -68,12 +71,17 @@ This phase implements branch protection rules and code ownership requirements to
   Branch name pattern: main
   ```
 - [ ] Configure rules:
+  - Required status checks:
+    - [ ] Format Backend
+    - [ ] Frontend Build
+    - [ ] Integration Test (Docker)
+    - [ ] Deployment Approval
   - [ ] Require pull request reviews
-  - [ ] Require approval from code owners
-  - [ ] Require status checks
-  - [ ] Require deployment approval
+    - [ ] Required approvers: 2
+    - [ ] Dismiss stale reviews
+  - [ ] Require conversation resolution
   - [ ] Include administrators
-  - [ ] No force push allowed
+  - [ ] Block force pushes
 
 ## 3. Configure Review Settings
 - [ ] Set required number of reviewers
@@ -151,6 +159,7 @@ This phase implements branch protection rules and code ownership requirements to
 | Version | Date | Branch | Changes | Author |
 |---------|------|---------|----------|---------|
 | 1.0.0   | [Current Date] | main | Initial document creation | [Your Name] |
+| 1.1.0   | [Current Date] | main | Updated branch protection rules to include Docker-related protections | [Your Name] |
 
 ## Final Notes
 - Protection rules should be regularly audited

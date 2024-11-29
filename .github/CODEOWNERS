@@ -1,0 +1,23 @@
+# Default owners for everything
+*       @team-leads
+
+# Backend specific
+/backend/ @backend-team-lead
+
+# Frontend specific
+/frontend/ @frontend-team-lead
+
+# Workflow files
+/.github/workflows/ @devops-lead
+
+# Documentation
+/docs/ @tech-docs-team
+
+# Docker and deployment configurations
+docker-compose*.yaml @devops-lead
+Dockerfile @devops-lead
+.env* @devops-lead
+
+# Test configurations
+/cypress/ @frontend-team-lead
+*.test.* @backend-team-lead
