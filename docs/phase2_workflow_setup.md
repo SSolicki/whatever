@@ -4,19 +4,16 @@
 This phase focuses on updating and configuring the CI/CD workflows to match the new branch structure. It ensures all automated tests and builds trigger on the appropriate branches.
 
 ## Prerequisites Checklist
-- [ ] Phase 1 completed successfully
-- [ ] GitHub admin access available
-- [ ] CI/CD environment variables configured
-- [ ] Team notified of workflow changes
+- [x] Phase 1 completed successfully
+- [x] GitHub admin access available
+- [x] CI/CD environment variables configured
+- [x] Team notified of workflow changes
 
 ## 1. Update Existing Workflows
 
 ### Integration Test (integration-test.yml)
-- [ ] Backup current workflow:
-  ```bash
-  cp .github/workflows/integration-test.yml .github/workflows/integration-test.yml.bak
-  ```
-- [ ] Update trigger configuration:
+- [x] Backup created via workflow-backup branch
+- [x] Updated trigger configuration:
   ```yaml
   on:
     push:
@@ -28,13 +25,23 @@ This phase focuses on updating and configuring the CI/CD workflows to match the 
         - test
         - main
   ```
+- [x] Updated to use Docker test environment:
+  ```yaml
+  jobs:
+    cypress-run:
+      runs-on: ubuntu-latest
+      steps:
+        # ... setup steps ...
+        - name: Build and run Test Stack
+          run: docker compose -f docker-compose.test.yaml up --detach --build
+        - name: Run Cypress Tests
+          run: docker compose -f docker-compose.test.yaml run --rm whatever-cypress
+  ```
+- [x] Status: Successfully updated and tested
 
 ### Backend Format (format-backend.yaml)
-- [ ] Backup current workflow:
-  ```bash
-  cp .github/workflows/format-backend.yaml .github/workflows/format-backend.yaml.bak
-  ```
-- [ ] Update trigger configuration:
+- [x] Backup created via workflow-backup branch
+- [x] Updated trigger configuration:
   ```yaml
   on:
     push:
@@ -46,13 +53,11 @@ This phase focuses on updating and configuring the CI/CD workflows to match the 
         - test
         - main
   ```
+- [x] Status: Successfully updated
 
 ### Frontend Build (format-build-frontend.yaml)
-- [ ] Backup current workflow:
-  ```bash
-  cp .github/workflows/format-build-frontend.yaml .github/workflows/format-build-frontend.yaml.bak
-  ```
-- [ ] Update trigger configuration:
+- [x] Backup created via workflow-backup branch
+- [x] Updated trigger configuration:
   ```yaml
   on:
     push:
@@ -64,43 +69,59 @@ This phase focuses on updating and configuring the CI/CD workflows to match the 
         - test
         - main
   ```
+- [x] Status: Successfully updated
 
 ## 2. Create New Workflow
 
 ### Deployment Approval (deployment-approval.yml)
-- [ ] Create new workflow file:
+- [x] Created new workflow file with configuration:
   ```yaml
   name: Deployment Approval
   on:
     pull_request:
       branches:
         - main
-  
   jobs:
     approval:
       runs-on: ubuntu-latest
       environment: production
       steps:
+        - name: Checkout Repository
+          uses: actions/checkout@v4
         - name: Pending Approval
           uses: softprops/action-gh-release@v1
           with:
             draft: true
+        - name: Deployment Gate
+          run: |
+            echo "Deployment requires manual approval"
+            echo "Please review the changes carefully"
   ```
+- [x] Status: Successfully created
 
 ## 3. Environment Configuration
 - [ ] Set up GitHub environments:
   - Development (dev)
+    - Auto-deploy enabled
+    - No approval required
   - Testing (test)
+    - Auto-deploy enabled
+    - Requires one reviewer
   - Production (main)
-- [ ] Configure environment variables per environment
-- [ ] Set up deployment approvers
+    - Manual deployment
+    - Requires two reviewers
+- [ ] Configure environment secrets:
+  - WEBUI_SECRET_KEY
+  - OLLAMA_BASE_URL
+  - Additional environment-specific variables
+- [ ] Set up deployment approvers per environment
 
 ## Success Criteria
-- [ ] All workflows trigger on correct branches
-- [ ] Integration tests run on dev and test branches
-- [ ] Format checks run on dev branches
-- [ ] Build processes complete successfully
-- [ ] Deployment approval workflow creates drafts
+- [x] All workflows trigger on correct branches
+- [x] Integration tests run on dev and test branches
+- [x] Format checks run on dev branches
+- [x] Build processes complete successfully
+- [ ] Deployment approval workflow creates drafts (pending test)
 
 ## Verification Steps
 1. Create test feature branch:
@@ -111,20 +132,6 @@ This phase focuses on updating and configuring the CI/CD workflows to match the 
 3. Verify workflow triggers
 4. Create test PR to test branch
 5. Verify all checks run
-
-## Rollback Instructions
-If issues occur:
-1. Restore backup files:
-   ```bash
-   cp .github/workflows/*.bak .github/workflows/
-   rm .github/workflows/*.bak
-   ```
-2. Commit and push changes:
-   ```bash
-   git add .github/workflows/
-   git commit -m "revert: restore workflow configurations"
-   git push
-   ```
 
 ## Document Management
 ### Version Control
@@ -171,6 +178,10 @@ If issues occur:
 | Version | Date | Branch | Changes | Author |
 |---------|------|---------|----------|---------|
 | 1.0.0   | [Current Date] | main | Initial document creation | [Your Name] |
+| 1.1.0   | [Current Date] | workflow-backup | Updated with implementation results | [Your Name] |
+| 1.2.0   | [Current Date] | dev | Updated Phase 2 documentation to reflect Docker-based test workflow changes | [Your Name] |
 
 ## Next Steps
-Once all success criteria are met, proceed to Phase 3: Branch Protection Setup
+Workflow configurations updated
+Need to complete environment setup
+Proceed to Phase 3: Branch Protection Setup once environments are configured
