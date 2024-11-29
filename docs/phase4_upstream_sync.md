@@ -50,26 +50,47 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout Repository
+        uses: actions/checkout@v4
         with:
-          ref: sync/upstream
           fetch-depth: 0
-      
-      - name: Sync with Upstream
+          ref: sync/upstream
+
+      - name: Configure Git
         run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Fetch Upstream
+        run: |
+          git remote add upstream https://github.com/open-webui/open-webui.git
           git fetch upstream
-          git merge upstream/main --no-edit
-          
+
+      - name: Sync Branch
+        run: |
+          git merge upstream/main --allow-unrelated-histories
+          git push origin sync/upstream
+
+      - name: Test Docker Build
+        run: |
+          docker compose -f docker-compose.test.yaml build
+          docker compose -f docker-compose.test.yaml up -d
+          docker compose -f docker-compose.test.yaml run --rm whatever-cypress
+          docker compose -f docker-compose.test.yaml down -v
+
       - name: Create Pull Request
+        if: success()
         uses: peter-evans/create-pull-request@v5
         with:
-          title: 'chore: sync with upstream'
           branch: sync/upstream
-          base: dev
-          labels: upstream-sync
+          title: 'chore: sync with upstream'
           body: |
             Automated PR to sync with upstream repository.
-            Please review changes carefully before merging.
+            
+            - All tests passing
+            - Docker build verified
+            
+            Please review carefully before merging.
 ```
 
 ## 3. Configure Branch Protection
@@ -207,6 +228,7 @@ jobs:
 | Version | Date | Branch | Changes | Author |
 |---------|------|---------|----------|---------|
 | 1.0.0   | [Current Date] | main | Initial document creation | [Your Name] |
+| 1.1.0   | [Current Date] | main | Update Phase 4 documentation to include Docker considerations | [Your Name] |
 
 ## Final Notes
 - Regular audit of sync process
