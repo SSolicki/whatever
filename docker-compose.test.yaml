@@ -73,15 +73,20 @@ services:
       - ./cypress.config.ts:/app/cypress.config.ts
       - ./package.json:/app/package.json
     environment:
-      - CYPRESS_BASE_URL=http://whatever-test:3002  # Fix port
+      - CYPRESS_BASE_URL=http://whatever-test:3002
       - DEBUG=cypress:*
     entrypoint: []
-    command: cypress run --config-file /app/cypress.config.ts --headless  # Simplify command
+    command: >
+      /bin/sh -c "
+      npm install cypress typescript@latest &&
+      npm install &&
+      cypress run --config-file /app/cypress.config.ts --headless
+      "
+    networks:
+      - whatever_network_test
     depends_on:
       - whatever
       - backend
-    networks:
-      - whatever_network_test
 
 volumes:
   ollama-test:
