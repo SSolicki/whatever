@@ -21,13 +21,13 @@ ARG UID=0
 ARG GID=0
 
 ######## WebUI frontend ########
-FROM --platform=$BUILDPLATFORM node:20-alpine3.19 AS build
+FROM --platform=$BUILDPLATFORM node:22-alpine3.20 AS build
 ARG BUILD_HASH
 
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --no-audit
+RUN npm install && npm prune
 
 COPY . .
 ENV APP_BUILD_HASH=${BUILD_HASH}
