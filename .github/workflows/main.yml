@@ -21,10 +21,17 @@ jobs:
           node-version: '20'
           cache: 'npm'
 
+      - name: Install Dependencies
+        id: install
+        run: |
+          if ! npm ci; then
+            echo "npm ci failed, falling back to npm install"
+            npm install
+          fi
+
       - name: Code Quality Checks
         id: quality
         run: |
-          npm ci
           npm run format
           npm run i18n:parse
       

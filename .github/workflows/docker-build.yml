@@ -53,3 +53,4 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             BUILD_HASH=${{ github.sha }}
+            NPM_INSTALL_STRATEGY=install

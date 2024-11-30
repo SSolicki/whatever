@@ -47,7 +47,9 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci --no-audit
+        run: |
+          npm install
+          npm prune
 
       - name: Format Frontend
         run: npm run format
@@ -76,7 +78,9 @@ jobs:
           cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci --no-audit
+        run: |
+          npm install
+          npm prune
 
       - name: Run vitest
         run: npm run test:frontend
