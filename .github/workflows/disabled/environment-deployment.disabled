@@ -1,0 +1,51 @@
+name: Environment Deployment
+
+on:
+  push:
+    branches: [ main, dev ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy'
+        required: true
+        type: choice
+        options:
+          - prod
+          - dev
+          - test
+        default: 'test'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'dev') }}
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up environment variables
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ] || [ "${{ github.event.inputs.environment }}" = "prod" ]; then
+            echo "COMPOSE_FILE=docker-compose.prod.yaml" >> $GITHUB_ENV
+            echo "ENV_FILE=.env.prod" >> $GITHUB_ENV
+          elif [ "${{ github.ref }}" = "refs/heads/dev" ] || [ "${{ github.event.inputs.environment }}" = "dev" ]; then
+            echo "COMPOSE_FILE=docker-compose.dev.yaml" >> $GITHUB_ENV
+            echo "ENV_FILE=.env.dev" >> $GITHUB_ENV
+          else
+            echo "COMPOSE_FILE=docker-compose.test.yaml" >> $GITHUB_ENV
+            echo "ENV_FILE=.env.test" >> $GITHUB_ENV
+          fi
+
+      - name: Copy environment file
+        run: |
+          cp ${{ env.ENV_FILE }} .env
+
+      - name: Deploy with Docker Compose
+        run: |
+          docker-compose -f ${{ env.COMPOSE_FILE }} pull
+          docker-compose -f ${{ env.COMPOSE_FILE }} up -d
+
+      - name: Verify Deployment
+        run: |
+          docker-compose -f ${{ env.COMPOSE_FILE }} ps
+          echo "Deployment completed for ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'dev') }}"
