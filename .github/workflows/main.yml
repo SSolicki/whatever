@@ -37,6 +37,9 @@ jobs:
       
       - name: Run Integration Tests
         id: tests
+        env:
+          CYPRESS_BASE_URL: http://localhost:8080
+          NODE_ENV: test
         run: |
           docker compose -f docker-compose.test.yaml up --detach --build
           sleep 30
