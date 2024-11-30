@@ -40,7 +40,7 @@ jobs:
         run: |
           docker compose -f docker-compose.test.yaml up --detach --build
           sleep 30
-          npm run test:integration
+          npx cypress run
       
       - name: Auto Merge to Test
         if: github.ref == 'refs/heads/dev' && success()
