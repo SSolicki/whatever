@@ -18,14 +18,14 @@ jobs:
       - name: Setup Environment
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
+          cache: 'npm'
 
       - name: Code Quality Checks
         id: quality
         run: |
-          npm install
+          npm ci
           npm run format
-          npm run format:backend
           npm run i18n:parse
       
       - name: Run Integration Tests
