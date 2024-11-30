@@ -43,10 +43,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
+          cache: 'npm'
 
       - name: Install Dependencies
-        run: npm install
+        run: npm ci --no-audit
 
       - name: Format Frontend
         run: npm run format
@@ -71,10 +72,11 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
+          cache: 'npm'
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm ci --no-audit
 
       - name: Run vitest
         run: npm run test:frontend
