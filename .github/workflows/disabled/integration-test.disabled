@@ -26,6 +26,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build and run Test Stack
+        env:
+          WEBUI_SECRET_KEY: test-key
+          NODE_ENV: test
         run: |
           docker compose -f docker-compose.test.yaml up --detach --build
 
