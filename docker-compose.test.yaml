@@ -2,15 +2,11 @@ name: whatever-test
 
 services:
   ollama:
-    image: ollama/ollama:${OLLAMA_DOCKER_TAG-latest}
-    container_name: ollama-test
-    volumes:
-      - ollama-test:/root/.ollama
+    image: ollama/ollama:latest
     networks:
       - whatever_network_test
     ports:
-      - "11436:11434"  # Different port for test Ollama API
-    restart: unless-stopped
+      - "11436:11434"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:11434"]
       interval: 10s
@@ -21,59 +17,17 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        OLLAMA_BASE_URL: '/ollama'
-        NODE_ENV: test
-    image: ghcr.io/whatever/whatever:${WEBUI_DOCKER_TAG-main}
-    container_name: whatever-test
+      target: development
     environment:
       - NODE_ENV=test
-      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY:-test-key}  # Add default value
-      - OLLAMA_BASE_URL=http://ollama-test:11436  # Fix port
-    volumes:
-      - whatever-test:/app/data
-      - ./cypress:/app/cypress  # Mount cypress tests
+      - OLLAMA_BASE_URL=http://ollama:11434
     ports:
       - "3002:8080"
     depends_on:
       ollama:
-        condition: service_healthy  # Add health check
-      backend:
-        condition: service_started
+        condition: service_healthy
     networks:
       - whatever_network_test
-    restart: unless-stopped
-
-  whatever-cypress:
-    image: cypress/included:latest
-    container_name: whatever-cypress-test
-    working_dir: /app
-    volumes:
-      - ./cypress:/app/cypress
-      - ./cypress.config.ts:/app/cypress.config.ts
-      - ./package.json:/app/package.json
-      - ./node_modules:/app/node_modules
-    environment:
-      - CYPRESS_BASE_URL=http://whatever-test:3002
-      - DEBUG=cypress:*
-    entrypoint: []
-    command: >
-      /bin/sh -c "
-      npm install cypress typescript@latest &&
-      npm install &&
-      cypress run --config-file /app/cypress.config.ts --headless
-      "
-    networks:
-      - whatever_network_test
-    depends_on:
-      - whatever
-      - backend
-
-volumes:
-  ollama-test:
-  whatever-test:
-  whatever-backend-test:
 
 networks:
   whatever_network_test:
-    driver: bridge
