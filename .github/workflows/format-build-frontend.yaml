@@ -11,26 +11,8 @@ on:
       - dev
 
 jobs:
-  check-files:
-    name: 'Check Required Files'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Check Required Files
-        run: |
-          required_files=("package.json" "package-lock.json" "src/routes/Chat.new.svelte" "CHANGELOG.md")
-          for file in "${required_files[@]}"; do
-            if [ ! -f "$file" ]; then
-              echo "Error: Required file $file is missing"
-              exit 1
-            fi
-          done
-
   build:
     name: 'Format & Build Frontend'
-    needs: check-files
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -39,45 +21,25 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: '22' # Or specify any other version you want to use
 
       - name: Install Dependencies
-        run: |
-          npm ci
-        continue-on-error: false
+        run: npm install
 
       - name: Format Frontend
-        run: |
-          if ! npm run format; then
-            echo "Error: Formatting failed"
-            exit 1
-          fi
+        run: npm run format
 
       - name: Run i18next
-        run: |
-          if ! npm run i18n:parse; then
-            echo "Error: i18next parsing failed"
-            exit 1
-          fi
+        run: npm run i18n:parse
 
       - name: Check for Changes After Format
-        run: |
-          if ! git diff --exit-code; then
-            echo "Error: Files were modified during formatting. Please commit the formatted files."
-            exit 1
-          fi
+        run: git diff --exit-code
 
       - name: Build Frontend
-        run: |
-          if ! npm run build; then
-            echo "Error: Build failed"
-            exit 1
-          fi
+        run: npm run build
 
   test-frontend:
     name: 'Frontend Unit Tests'
-    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -86,15 +48,10 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: '22'
 
       - name: Install Dependencies
         run: npm ci
 
       - name: Run vitest
-        run: |
-          npm run test:frontend || {
-            echo "Error: Frontend tests failed"
-            exit 1
-          }
+        run: npm run test:frontend
