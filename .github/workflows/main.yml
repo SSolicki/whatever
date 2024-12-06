@@ -13,30 +13,31 @@ jobs:
     if: github.ref == 'refs/heads/dev' || github.event_name == 'pull_request'
     
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
-      - name: Setup Environment
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
 
       - name: Install Dependencies
-        id: install
         run: |
-          if ! npm ci; then
-            echo "npm ci failed, falling back to npm install"
-            npm install
-          fi
+          npm ci || npm install
 
       - name: Code Quality Checks
-        id: quality
         run: |
           npm run format
           npm run i18n:parse
+          git diff --exit-code
+      
+      - name: Build Frontend
+        run: npm run build
+        
+      - name: Run Frontend Tests
+        run: npm run test:frontend
       
       - name: Run Integration Tests
-        id: tests
         env:
           CYPRESS_BASE_URL: http://localhost:8080
           NODE_ENV: test
@@ -65,7 +66,7 @@ jobs:
       url: https://test.your-domain.com
     
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -73,6 +74,13 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Build and Push Test Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository }}:test
       
       - name: Deploy to Test
         run: |
@@ -88,7 +96,7 @@ jobs:
       url: https://your-domain.com
     
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
@@ -96,6 +104,13 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Build and Push Production Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository }}:latest
       
       - name: Deploy to Production
         run: |
