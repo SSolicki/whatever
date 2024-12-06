@@ -43,7 +43,7 @@ services:
       - RAG_WEB_SEARCH_CONCURRENT_REQUESTS=10
       - SEARXNG_BASE_URL=${SEARXNG_BASE_URL}
       - SEARXNG_QUERY_URL=${SEARXNG_QUERY_URL}
-      - DATABASE_URL=postgresql://whatever:${DB_PASSWORD}@db:5432/whatever
+      - DATABASE_URL=${DATABASE_URL}
       - DB_PASSWORD=${DB_PASSWORD}
       - DATABASE_POOL_SIZE=${DATABASE_POOL_SIZE}
       - DATABASE_POOL_MAX_OVERFLOW=${DATABASE_POOL_MAX_OVERFLOW}
@@ -115,7 +115,7 @@ services:
       - no-new-privileges:true
 
   db:
-    image: postgres:16
+    image: postgres:15
     container_name: db-prod
     environment:
       POSTGRES_USER: whatever
