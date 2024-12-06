@@ -1,8 +1,8 @@
-name: whatever-prod
+name: whatever
 
 services:
   ollama:
-    image: ollama/ollama:${OLLAMA_DOCKER_TAG-latest}
+    image: ollama/ollama:${OLLAMA_DOCKER_TAG}
     container_name: ollama-prod
     runtime: nvidia
     deploy:
@@ -17,7 +17,7 @@ services:
     networks:
       - whatever_network_prod
     ports:
-      - "11435:11434"  # Different port for prod Ollama API
+      - "11434:11434"
     restart: unless-stopped
 
   whatever:
@@ -26,86 +26,83 @@ services:
       dockerfile: Dockerfile
       args:
         OLLAMA_BASE_URL: '/ollama'
-        NODE_ENV: production
+        NODE_ENV: ${NODE_ENV}
     image: ghcr.io/whatever/whatever:${WEBUI_DOCKER_TAG-main}
     container_name: whatever-prod
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV}
       - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}
-      - OLLAMA_BASE_URL=http://ollama-prod:11434
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - API_KEY=${API_KEY}
+      - ADMIN_USERNAME=${ADMIN_USERNAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL}
       - ENABLE_RAG_WEB_SEARCH=true
       - RAG_WEB_SEARCH_ENGINE=searxng
       - RAG_WEB_SEARCH_RESULT_COUNT=3
       - RAG_WEB_SEARCH_CONCURRENT_REQUESTS=10
-      - SEARXNG_QUERY_URL=http://searxng-prod:8080/search?q=<query>
-      - DATABASE_URL=postgresql://whatever:${DB_PASSWORD}@db:5432/whatever
-      - OPEN_AI_API_KEY=${OPENAI_API_KEY}
-      - CHROMA_API_KEY=${CHROMA_API_KEY}
+      - SEARXNG_BASE_URL=${SEARXNG_BASE_URL}
+      - SEARXNG_QUERY_URL=${SEARXNG_QUERY_URL}
+      - DATABASE_URL=${DATABASE_URL}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DATABASE_POOL_SIZE=${DATABASE_POOL_SIZE}
+      - DATABASE_POOL_MAX_OVERFLOW=${DATABASE_POOL_MAX_OVERFLOW}
+      - DATABASE_POOL_TIMEOUT=${DATABASE_POOL_TIMEOUT}
+      - DATABASE_POOL_RECYCLE=${DATABASE_POOL_RECYCLE}
+      - OPENAI_API_BASE_URL=${OPENAI_API_BASE_URL}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - QDRANT_URI=${QDRANT_URI}
+      - QDRANT_API_KEY=${QDRANT_API_KEY}
+      - VECTOR_SEARCH_ENGINE=${VECTOR_SEARCH_ENGINE}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+      - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - SESSION_COOKIE_SECURE=${SESSION_COOKIE_SECURE}
+      - SESSION_COOKIE_HTTPONLY=${SESSION_COOKIE_HTTPONLY}
+      - SESSION_COOKIE_SAMESITE=${SESSION_COOKIE_SAMESITE}
+      - RATE_LIMIT_WINDOW=${RATE_LIMIT_WINDOW}
+      - RATE_LIMIT_MAX_REQUESTS=${RATE_LIMIT_MAX_REQUESTS}
+      - SCARF_NO_ANALYTICS=${SCARF_NO_ANALYTICS}
+      - DO_NOT_TRACK=${DO_NOT_TRACK}
+      - ANONYMIZED_TELEMETRY=${ANONYMIZED_TELEMETRY}
     volumes:
       - whatever-prod:/app/data
     ports:
       - "80:8080"
     depends_on:
       - ollama
-      - backend
       - searxng
-      - chromadb
+      - qdrant
       - db
     networks:
       - whatever_network_prod
     restart: unless-stopped
 
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    container_name: whatever-backend-prod
-    environment:
-      - WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}
-      - HOST=0.0.0.0
-      - PORT=8080
-      - OLLAMA_BASE_URL=http://ollama-prod:11434
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant-prod
     volumes:
-      - whatever-backend-prod:/app/data
-    networks:
-      - whatever_network_prod
-    depends_on:
-      - ollama
-    restart: unless-stopped
-    entrypoint: ["/bin/bash"]
-    command: ["/app/backend/start.sh"]
-
-  chromadb:
-    hostname: chromadb
-    image: chromadb/chroma:0.5.15
-    container_name: chromadb-prod
-    volumes:
-      - ./data/chromadb:/chroma/chroma
-    environment:
-      - IS_PERSISTENT=TRUE
-      - ALLOW_RESET=TRUE
-      - PERSIST_DIRECTORY=/chroma/chroma
-    ports: 
-      - "8000:8000"
+      - qdrant-prod:/qdrant/storage
+    ports:
+      - "6333:6333"
     networks:
       - whatever_network_prod
     restart: unless-stopped
-    healthcheck: 
-      test: ["CMD-SHELL", "curl localhost:8000/api/v1/heartbeat || exit 1"]
-      interval: 10s
-      retries: 2
-      start_period: 5s
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6333/health"]
+      interval: 30s
       timeout: 10s
+      retries: 3
+      start_period: 30s
 
   searxng:
     image: searxng/searxng:latest
     container_name: searxng-prod
+    volumes:
+      - searxng-data:/etc/searxng
+    ports:
+      - "8080:8080"
     networks:
       - whatever_network_prod
-    ports:
-      - "8081:8080"
-    volumes:
-      - ./searxng:/etc/searxng
     restart: unless-stopped
     cap_drop:
       - ALL
@@ -119,6 +116,7 @@ services:
 
   db:
     image: postgres:15
+    container_name: db-prod
     environment:
       POSTGRES_USER: whatever
       POSTGRES_PASSWORD: ${DB_PASSWORD}
@@ -129,14 +127,13 @@ services:
       - whatever_network_prod
     restart: unless-stopped
 
-volumes:
-  ollama-prod:
-  whatever-prod:
-  whatever-backend-prod:
-  chroma-data:
-  searxng-data:
-  postgres_data:
-
 networks:
   whatever_network_prod:
     driver: bridge
+
+volumes:
+  ollama-prod:
+  whatever-prod:
+  qdrant-prod:
+  searxng-data:
+  postgres_data:
