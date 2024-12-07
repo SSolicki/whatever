@@ -1,6 +1,6 @@
 {
-	"name": "open-webui",
-	"version": "0.4.6",
+	"name": "whatever",
+	"version": "0.0.1",
 	"private": true,
 	"scripts": {
 		"dev": "npm run pyodide:fetch && vite dev --host",
@@ -17,7 +17,8 @@
 		"i18n:parse": "i18next --config i18next-parser.config.ts && prettier --write \"src/lib/i18n/**/*.{js,json}\"",
 		"cy:open": "cypress open",
 		"test:frontend": "vitest --passWithNoTests",
-		"pyodide:fetch": "node scripts/prepare-pyodide.js"
+		"pyodide:fetch": "node scripts/prepare-pyodide.js",
+		"dev:mock": "node scripts/start-dev.js"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "3.2.2",
@@ -25,6 +26,7 @@
 		"@sveltejs/kit": "^2.5.20",
 		"@sveltejs/vite-plugin-svelte": "^3.1.1",
 		"@tailwindcss/typography": "^0.5.13",
+		"@types/lodash-es": "^4.17.12",
 		"@typescript-eslint/eslint-plugin": "^6.17.0",
 		"@typescript-eslint/parser": "^6.17.0",
 		"autoprefixer": "^10.4.16",
@@ -34,6 +36,7 @@
 		"eslint-plugin-cypress": "^3.4.0",
 		"eslint-plugin-svelte": "^2.43.0",
 		"i18next-parser": "^9.0.1",
+		"json-server": "^1.0.0-beta.3",
 		"postcss": "^8.4.31",
 		"prettier": "^3.3.3",
 		"prettier-plugin-svelte": "^3.2.6",

@@ -1,0 +1,116 @@
+{
+  "collection": {
+    "title": "Collections",
+    "create": "Create Collection",
+    "createTitle": "Create New Collection",
+    "delete": "Delete",
+    "deleteTitle": "Delete Collection",
+    "deleteConfirm": "Are you sure you want to delete collection '{{name}}'?",
+    "deleteSelected": "Delete Selected ({{count}})",
+    "batchDeleteTitle": "Delete Multiple Collections",
+    "batchDeleteConfirm": "Are you sure you want to delete {{count}} collections?",
+    "name": "Name",
+    "namePlaceholder": "Enter collection name",
+    "nameRequired": "Collection name is required",
+    "nameHelp": "A unique name for the collection",
+    "description": "Description",
+    "status": "Status",
+    "documents": "Documents",
+    "vectors": "Vectors",
+    "actions": "Actions",
+    "refresh": "Refresh",
+    "empty": "No collections found",
+    "health": {
+      "healthy": "Healthy",
+      "warning": "Warning",
+      "error": "Error"
+    }
+  },
+  "config": {
+    "title": "Vector Database Configuration",
+    "save": "Save Configuration",
+    "test": "Test Connection",
+    "testing": "Testing...",
+    "import": "Import",
+    "export": "Export",
+    "importExport": "Import/Export",
+    "type": "Database Type",
+    "connectionSuccess": "Connection successful",
+    "connectionFailed": "Connection failed",
+    "invalidConfig": "Invalid configuration file",
+    "configSaved": "Configuration saved",
+    "configImported": "Configuration imported"
+  },
+  "database": {
+    "milvus": {
+      "uri": "Milvus URI",
+      "uriPlaceholder": "localhost:19530"
+    },
+    "qdrant": {
+      "uri": "Qdrant URI",
+      "uriPlaceholder": "http://localhost:6333",
+      "apiKey": "API Key"
+    },
+    "opensearch": {
+      "uri": "OpenSearch URI",
+      "uriPlaceholder": "https://localhost:9200",
+      "ssl": "Enable SSL",
+      "certVerify": "Verify Certificates",
+      "username": "Username",
+      "password": "Password"
+    },
+    "pgvector": {
+      "dbUrl": "Database URL",
+      "dbUrlPlaceholder": "postgresql://user:pass@localhost:5432/db"
+    },
+    "chroma": {
+      "httpHost": "HTTP Host",
+      "httpPort": "HTTP Port",
+      "ssl": "Enable SSL",
+      "tenant": "Tenant",
+      "database": "Database",
+      "authProvider": "Auth Provider",
+      "authCredentials": "Auth Credentials"
+    }
+  },
+  "settings": {
+    "title": "Vector Settings",
+    "embeddingModel": "Embedding Model",
+    "dimensions": "Dimensions",
+    "chunkSize": "Chunk Size",
+    "chunkOverlap": "Chunk Overlap",
+    "embeddingBatchSize": "Embedding Batch Size",
+    "includeVectors": "Include Vectors",
+    "queryTemplate": "Query Template",
+    "retrievalK": "Retrieval K",
+    "hybridSearch": "Enable Hybrid Search"
+  },
+  "document": {
+    "title": "Document Processing",
+    "upload": "Upload Documents",
+    "process": "Process Documents",
+    "processing": "Processing...",
+    "success": "Documents processed successfully",
+    "error": "Error processing documents",
+    "dropzone": "Drop files here or click to upload",
+    "invalidType": "Invalid file type",
+    "maxSize": "File too large",
+    "status": {
+      "pending": "Pending",
+      "processing": "Processing",
+      "completed": "Completed",
+      "failed": "Failed"
+    }
+  },
+  "search": {
+    "title": "Search Interface",
+    "placeholder": "Enter your search query",
+    "search": "Search",
+    "searching": "Searching...",
+    "noResults": "No results found",
+    "error": "Error performing search",
+    "score": "Score",
+    "source": "Source",
+    "content": "Content"
+  }
+}

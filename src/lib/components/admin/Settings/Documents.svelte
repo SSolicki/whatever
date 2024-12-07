@@ -1,10 +1,6 @@
 <script lang="ts">
 	import { toast } from 'svelte-sonner';
-
 	import { onMount, getContext, createEventDispatcher } from 'svelte';
-
-	const dispatch = createEventDispatcher();
-
 	import {
 		getQuerySettings,
 		updateQuerySettings,
@@ -15,12 +11,16 @@
 		updateRerankingConfig,
 		resetUploadDir,
 		getRAGConfig,
-		updateRAGConfig
+		updateRAGConfig,
+		getVectorDBConfig,
+		updateVectorDBConfig,
+		testVectorDBConnection
 	} from '$lib/apis/retrieval';
-
 	import { knowledge, models } from '$lib/stores';
+	import { vectordb } from '$lib/stores/vectordb';
 	import { getKnowledgeBases } from '$lib/apis/knowledge';
 	import { uploadDir, deleteAllFiles, deleteFileById } from '$lib/apis/files';
+	import type { DBConfig, ConnectionStatus, Collection } from '$lib/types/vectordb';
 
 	import ResetUploadDirConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import ResetVectorDBConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
@@ -29,8 +29,18 @@
 	import Switch from '$lib/components/common/Switch.svelte';
 	import { text } from '@sveltejs/kit';
 	import Textarea from '$lib/components/common/Textarea.svelte';
+	import DatabaseConfig from '$lib/components/admin/vectordb/DatabaseConfig.svelte';
+	import VectorSettings from '$lib/components/admin/vectordb/VectorSettings.svelte';
+	import CollectionManager from '$lib/components/admin/vectordb/CollectionManager.svelte';
+	import DocumentProcessor from '$lib/components/admin/vectordb/DocumentProcessor.svelte';
+	import SearchInterface from '$lib/components/admin/vectordb/SearchInterface.svelte';
+	import ConfigManager from '$lib/components/admin/vectordb/ConfigManager.svelte';
+  	import { configStore } from '$lib/stores/vectordb/configStore';
+  	import { configStorage } from '$lib/services/vectordb/configStorage';
+  	import { connectionService } from '$lib/services/vectordb/connectionService';
 
 	const i18n = getContext('i18n');
+	const dispatch = createEventDispatcher();
 
 	let scanDirLoading = false;
 	let updateEmbeddingModelLoading = false;
@@ -68,6 +78,34 @@
 		k: 4,
 		hybrid: false
 	};
+
+	let dbConfig: DBConfig = {
+		type: 'qdrant',
+		config: {
+			qdrant: {
+				uri: '',
+				apiKey: ''
+			}
+		}
+	};
+
+	async function handleTestConnection(config: DBConfig): Promise<ConnectionStatus> {
+    return await connectionService.testConnection(config);
+  	}
+  
+  	async function handleSaveConfig(config: DBConfig): Promise<void> {
+    	try {
+      	await configStorage.saveConfig({
+        	name: "Local Test Config",
+        	dbConfig: config,
+        	vectorSettings: sampleSettings,
+        	collections: []
+      	});
+      	toast.success($i18n.t('Configuration saved successfully'));
+    	} catch (error) {
+      toast.error($i18n.t('Failed to save configuration: ') + error.message);
+    	}
+  	}
 
 	const embeddingModelUpdateHandler = async () => {
 		if (embeddingEngine === '' && embeddingModel.split('/').length - 1 > 1) {
@@ -224,14 +262,38 @@
 		querySettings = await updateQuerySettings(localStorage.token, querySettings);
 	};
 
+	const handleSaveDBConfig = async (config: DBConfig) => {
+		try {
+			await updateVectorDBConfig(localStorage.token, config);
+			toast.success($i18n.t('Configuration saved'));
+		} catch (error) {
+			toast.error($i18n.t('Failed to save configuration: ') + error.message);
+		}
+	};
+
+	const handleTestDBConnection = async (config: DBConfig) => {
+		try {
+			await testVectorDBConnection(localStorage.token, config);
+			return { isConnected: true };
+		} catch (error) {
+			return { isConnected: false, error: error.message };
+		}
+	};
+
 	onMount(async () => {
 		await setEmbeddingConfig();
 		await setRerankingConfig();
-
 		querySettings = await getQuerySettings(localStorage.token);
-
 		const res = await getRAGConfig(localStorage.token);
-
+		
+		try {
+			const config = await getVectorDBConfig(localStorage.token);
+			if (config) {
+				dbConfig = config;
+			}
+		} catch (error) {
+			console.error('Failed to load vector database configuration:', error);
+		}
 		if (res) {
 			pdfExtractImages = res.pdf_extract_images;
 
@@ -548,6 +610,16 @@
 					</div>
 				</div>
 			{/if}
+		</div>
+
+		<hr class=" dark:border-gray-850" />
+
+		<div>
+			<DatabaseConfig
+				config={dbConfig}
+				onSave={handleSaveConfig}
+				onTest={handleTestConnection}
+			/>
 		</div>
 
 		<hr class=" dark:border-gray-850" />
