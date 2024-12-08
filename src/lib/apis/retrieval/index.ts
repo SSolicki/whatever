@@ -1,4 +1,5 @@
 import { RETRIEVAL_API_BASE_URL } from '$lib/constants';
+import type { DBConfig, VectorDBType, ConnectionStatus } from '$lib/types/vectordb';
 
 export const getRAGConfig = async (token: string) => {
 	let error = null;
@@ -566,89 +567,134 @@ export const resetVectorDB = async (token: string) => {
 	return res;
 };
 
-type DBConfig = {
-	uri: string;
+class VectorDBError extends Error {
+    constructor(message: string, public code: string) {
+        super(message);
+        this.name = 'VectorDBError';
+    }
+}
+
+export const getVectorDBConfig = async (
+	token: string
+): Promise<{ current_db: VectorDBType; available_dbs: VectorDBType[] }> => {
+	try {
+        const res = await fetch(`${RETRIEVAL_API_BASE_URL}/config/vectordb`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            }
+        });
+
+        if (!res.ok) {
+            const error = await res.json();
+            throw new VectorDBError(
+                error.detail || 'Failed to get vector database configuration',
+                'CONFIG_FETCH_ERROR'
+            );
+        }
+
+        const data = await res.json();
+        return data;
+    } catch (error) {
+        if (error instanceof VectorDBError) {
+            throw error;
+        }
+        throw new VectorDBError(
+            'Failed to get vector database configuration',
+            'NETWORK_ERROR'
+        );
+    }
 };
 
-export const getVectorDBConfig = async (token: string) => {
-	let error = null;
+export const updateVectorDBConfig = async (
+	token: string,
+	config: DBConfig
+): Promise<{ message: string }> => {
+	try {
+        if (!config.type || !config.config) {
+            throw new VectorDBError(
+                'Invalid configuration: missing required fields',
+                'INVALID_CONFIG'
+            );
+        }
 
-	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/config/vectordb`, {
-		method: 'GET',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		}
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
+        const res = await fetch(`${RETRIEVAL_API_BASE_URL}/config/vectordb`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(config)
+        });
 
-	if (error) {
-		throw error;
-	}
+        if (res.status === 422) {
+            const error = await res.json();
+            throw new VectorDBError(
+                error.detail || 'Invalid configuration',
+                'VALIDATION_ERROR'
+            );
+        }
 
-	return res;
+        if (!res.ok) {
+            const error = await res.json();
+            throw new VectorDBError(
+                error.detail || 'Failed to update vector database configuration',
+                'CONFIG_UPDATE_ERROR'
+            );
+        }
+
+        return await res.json();
+    } catch (error) {
+        if (error instanceof VectorDBError) {
+            throw error;
+        }
+        throw new VectorDBError(
+            'Failed to update vector database configuration',
+            'NETWORK_ERROR'
+        );
+    }
 };
 
-export const updateVectorDBConfig = async (token: string, config: DBConfig) => {
-	let error = null;
+export const testVectorDBConfig = async (
+	token: string,
+	config: DBConfig
+): Promise<ConnectionStatus> => {
+	try {
+        if (!config.type || !config.config) {
+            throw new VectorDBError(
+                'Invalid configuration: missing required fields',
+                'INVALID_CONFIG'
+            );
+        }
 
-	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/config/vectordb`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		},
-		body: JSON.stringify(config)
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
+        const res = await fetch(`${RETRIEVAL_API_BASE_URL}/config/vectordb/test`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(config)
+        });
 
-	if (error) {
-		throw error;
-	}
+        if (!res.ok) {
+            const error = await res.json();
+            console.error('Vector DB test failed:', error);
+            throw new VectorDBError(
+                error.detail || 'Failed to test vector database configuration',
+                'VALIDATION_ERROR'
+            );
+        }
 
-	return res;
-};
-
-export const testVectorDBConnection = async (token: string, config: DBConfig) => {
-	let error = null;
-
-	const res = await fetch(`${RETRIEVAL_API_BASE_URL}/config/vectordb/test`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			Authorization: `Bearer ${token}`
-		},
-		body: JSON.stringify(config)
-	})
-		.then(async (res) => {
-			if (!res.ok) throw await res.json();
-			return res.json();
-		})
-		.catch((err) => {
-			console.log(err);
-			error = err.detail;
-			return null;
-		});
-
-	if (error) {
-		throw error;
-	}
-
-	return res;
+        return await res.json();
+    } catch (error) {
+        if (error instanceof VectorDBError) {
+            throw error;
+        }
+        console.error('Vector DB test error:', error);
+        throw new VectorDBError(
+            error instanceof Error ? error.message : 'Unknown error occurred',
+            'UNKNOWN_ERROR'
+        );
+    }
 };

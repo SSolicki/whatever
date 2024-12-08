@@ -14,13 +14,13 @@
 		updateRAGConfig,
 		getVectorDBConfig,
 		updateVectorDBConfig,
-		testVectorDBConnection
+		testVectorDBConfig
 	} from '$lib/apis/retrieval';
 	import { knowledge, models } from '$lib/stores';
-	import { vectordb } from '$lib/stores/vectordb';
 	import { getKnowledgeBases } from '$lib/apis/knowledge';
 	import { uploadDir, deleteAllFiles, deleteFileById } from '$lib/apis/files';
-	import type { DBConfig, ConnectionStatus, Collection } from '$lib/types/vectordb';
+	import type { DBConfig, ConnectionStatus } from '$lib/types/vectordb';
+	import { DEFAULT_DB_CONFIG } from '$lib/types/vectordb';
 
 	import ResetUploadDirConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import ResetVectorDBConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
@@ -30,14 +30,6 @@
 	import { text } from '@sveltejs/kit';
 	import Textarea from '$lib/components/common/Textarea.svelte';
 	import DatabaseConfig from '$lib/components/admin/vectordb/DatabaseConfig.svelte';
-	import VectorSettings from '$lib/components/admin/vectordb/VectorSettings.svelte';
-	import CollectionManager from '$lib/components/admin/vectordb/CollectionManager.svelte';
-	import DocumentProcessor from '$lib/components/admin/vectordb/DocumentProcessor.svelte';
-	import SearchInterface from '$lib/components/admin/vectordb/SearchInterface.svelte';
-	import ConfigManager from '$lib/components/admin/vectordb/ConfigManager.svelte';
-  	import { configStore } from '$lib/stores/vectordb/configStore';
-  	import { configStorage } from '$lib/services/vectordb/configStorage';
-  	import { connectionService } from '$lib/services/vectordb/connectionService';
 
 	const i18n = getContext('i18n');
 	const dispatch = createEventDispatcher();
@@ -79,33 +71,64 @@
 		hybrid: false
 	};
 
-	let dbConfig: DBConfig = {
-		type: 'qdrant',
-		config: {
-			qdrant: {
-				uri: '',
-				apiKey: ''
+	let dbConfig: DBConfig = DEFAULT_DB_CONFIG;
+
+	onMount(async () => {
+		try {
+			// Load vector database configuration
+			const vectorConfig = await getVectorDBConfig(localStorage.token);
+			dbConfig = {
+				type: vectorConfig.current_db,
+				config: dbConfig.config // Keep the default config structure
+			};
+
+			// Load embedding configuration
+			await setEmbeddingConfig();
+
+			// Load reranking configuration
+			await setRerankingConfig();
+
+			// Load query settings
+			querySettings = await getQuerySettings(localStorage.token);
+
+			// Load RAG configuration
+			const ragConfig = await getRAGConfig(localStorage.token);
+			if (ragConfig) {
+				pdfExtractImages = ragConfig.pdf_extract_images;
+
+				textSplitter = ragConfig.chunk.text_splitter;
+				chunkSize = ragConfig.chunk.chunk_size;
+				chunkOverlap = ragConfig.chunk.chunk_overlap;
+
+				contentExtractionEngine = ragConfig.content_extraction.engine;
+				tikaServerUrl = ragConfig.content_extraction.tika_server_url;
+				showTikaServerUrl = contentExtractionEngine === 'tika';
+
+				fileMaxSize = ragConfig?.file?.max_size ?? '';
+				fileMaxCount = ragConfig?.file?.max_count ?? '';
 			}
+		} catch (error) {
+			console.error('Failed to initialize configurations:', error);
+			toast.error($i18n.t('Failed to load configurations'));
+		}
+	});
+
+	const handleSaveVectorDBConfig = async (config: DBConfig) => {
+		try {
+			await updateVectorDBConfig(localStorage.token, config);
+			dbConfig = config;
+		} catch (error) {
+			throw new Error('Failed to update vector database configuration');
 		}
 	};
 
-	async function handleTestConnection(config: DBConfig): Promise<ConnectionStatus> {
-    return await connectionService.testConnection(config);
-  	}
-  
-  	async function handleSaveConfig(config: DBConfig): Promise<void> {
-    	try {
-      	await configStorage.saveConfig({
-        	name: "Local Test Config",
-        	dbConfig: config,
-        	vectorSettings: sampleSettings,
-        	collections: []
-      	});
-      	toast.success($i18n.t('Configuration saved successfully'));
-    	} catch (error) {
-      toast.error($i18n.t('Failed to save configuration: ') + error.message);
-    	}
-  	}
+	const handleTestVectorDBConnection = async (config: DBConfig): Promise<ConnectionStatus> => {
+		try {
+			return await testVectorDBConfig(localStorage.token, config);
+		} catch (error) {
+			throw new Error('Failed to test vector database connection');
+		}
+	};
 
 	const embeddingModelUpdateHandler = async () => {
 		if (embeddingEngine === '' && embeddingModel.split('/').length - 1 > 1) {
@@ -261,54 +284,6 @@
 		querySettings.hybrid = !querySettings.hybrid;
 		querySettings = await updateQuerySettings(localStorage.token, querySettings);
 	};
-
-	const handleSaveDBConfig = async (config: DBConfig) => {
-		try {
-			await updateVectorDBConfig(localStorage.token, config);
-			toast.success($i18n.t('Configuration saved'));
-		} catch (error) {
-			toast.error($i18n.t('Failed to save configuration: ') + error.message);
-		}
-	};
-
-	const handleTestDBConnection = async (config: DBConfig) => {
-		try {
-			await testVectorDBConnection(localStorage.token, config);
-			return { isConnected: true };
-		} catch (error) {
-			return { isConnected: false, error: error.message };
-		}
-	};
-
-	onMount(async () => {
-		await setEmbeddingConfig();
-		await setRerankingConfig();
-		querySettings = await getQuerySettings(localStorage.token);
-		const res = await getRAGConfig(localStorage.token);
-		
-		try {
-			const config = await getVectorDBConfig(localStorage.token);
-			if (config) {
-				dbConfig = config;
-			}
-		} catch (error) {
-			console.error('Failed to load vector database configuration:', error);
-		}
-		if (res) {
-			pdfExtractImages = res.pdf_extract_images;
-
-			textSplitter = res.chunk.text_splitter;
-			chunkSize = res.chunk.chunk_size;
-			chunkOverlap = res.chunk.chunk_overlap;
-
-			contentExtractionEngine = res.content_extraction.engine;
-			tikaServerUrl = res.content_extraction.tika_server_url;
-			showTikaServerUrl = contentExtractionEngine === 'tika';
-
-			fileMaxSize = res?.file.max_size ?? '';
-			fileMaxCount = res?.file.max_count ?? '';
-		}
-	});
 </script>
 
 <ResetUploadDirConfirmDialog
@@ -615,10 +590,28 @@
 		<hr class=" dark:border-gray-850" />
 
 		<div>
-			<DatabaseConfig
-				config={dbConfig}
-				onSave={handleSaveConfig}
-				onTest={handleTestConnection}
+			<DatabaseConfig 
+				bind:config={dbConfig}
+				onSave={async (config) => {
+					try {
+						await updateVectorDBConfig(localStorage.token, config);
+						toast.success($i18n.t('Vector database configuration updated successfully'));
+					} catch (error) {
+						toast.error(error.message);
+					}
+				}}
+				onTest={async (config) => {
+					try {
+						return await testVectorDBConfig(localStorage.token, config);
+					} catch (error) {
+						toast.error(error.message);
+						return {
+							isConnected: false,
+							error: error.message,
+							lastChecked: new Date()
+						};
+					}
+				}}
 			/>
 		</div>
 

@@ -1,4 +1,5 @@
 from typing import Optional
+from urllib.parse import urlparse
 
 from qdrant_client import QdrantClient as Qclient
 from qdrant_client.http.models import PointStruct
@@ -6,6 +7,7 @@ from qdrant_client.models import models
 
 from open_webui.apps.retrieval.vector.main import VectorItem, SearchResult, GetResult
 from open_webui.config import QDRANT_URI, QDRANT_API_KEY
+import logging
 
 NO_LIMIT = 999999999
 
@@ -15,11 +17,49 @@ class QdrantClient:
         self.collection_prefix = "open-webui"
         self.QDRANT_URI = QDRANT_URI
         self.QDRANT_API_KEY = QDRANT_API_KEY
-        self.client = (
-            Qclient(url=self.QDRANT_URI, api_key=self.QDRANT_API_KEY)
-            if self.QDRANT_URI
-            else None
-        )
+        self.client = None
+        if self.QDRANT_URI:
+            try:
+                self._validate_uri(self.QDRANT_URI)
+                # Only include api_key if it's not empty
+                client_args = {"url": self.QDRANT_URI}
+                if self.QDRANT_API_KEY:
+                    client_args["api_key"] = self.QDRANT_API_KEY
+                self.client = Qclient(**client_args)
+            except ValueError as e:
+                logging.error(f"Invalid Qdrant URI: {str(e)}")
+
+    def _validate_uri(self, uri: str) -> None:
+        """Validate the Qdrant URI format."""
+        if not uri:
+            raise ValueError("URI cannot be empty")
+
+        try:
+            parsed = urlparse(uri)
+            if not parsed.scheme or not parsed.netloc:
+                raise ValueError("URI must include scheme (http/https) and host")
+            if parsed.scheme not in ["http", "https"]:
+                raise ValueError("URI scheme must be http or https")
+        except Exception as e:
+            raise ValueError(f"Invalid URI format: {str(e)}")
+
+    async def test_connection(self) -> bool:
+        """Test the connection to the Qdrant server."""
+        try:
+            if not self.client:
+                return False
+
+            # Test connection by listing collections
+            try:
+                self.client.get_collections()
+                return True
+            except Exception as e:
+                logging.error(f"Failed to list collections: {str(e)}")
+                return False
+
+        except Exception as e:
+            logging.error(f"Qdrant connection test failed: {str(e)}")
+            return False
 
     def _result_to_get_result(self, points) -> GetResult:
         ids = []

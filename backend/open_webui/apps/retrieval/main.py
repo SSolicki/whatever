@@ -9,7 +9,8 @@ import shutil
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Iterator, Optional, Sequence, Union
+from typing import Iterator, Optional, Sequence, Union, Dict, Literal
+from urllib.parse import urlparse
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -20,6 +21,8 @@ import tiktoken
 from open_webui.storage.provider import Storage
 from open_webui.apps.webui.models.knowledge import Knowledges
 from open_webui.apps.retrieval.vector.connector import VECTOR_DB_CLIENT
+from open_webui.apps.retrieval.vector.dbs.qdrant import QdrantClient, Qclient
+from open_webui.config import VECTOR_DB
 
 # Document loaders
 from open_webui.apps.retrieval.loaders.main import Loader
@@ -1474,6 +1477,143 @@ def reset_upload_dir(user=Depends(get_admin_user)) -> bool:
         print(f"Failed to process the directory {folder}. Reason: {e}")
     return True
 
+
+####################################
+# Vector DB configuration
+####################################
+
+VectorDBType = Literal["qdrant", "chroma", "milvus", "opensearch", "pgvector"]
+
+class QdrantConfig(BaseModel):
+    uri: str
+    apiKey: Optional[str] = None
+
+class VectorDBConfig(BaseModel):
+    type: VectorDBType
+    config: Dict[str, Dict[str, str]]
+
+class VectorDBResponse(BaseModel):
+    current_db: VectorDBType
+    available_dbs: list[VectorDBType]
+
+class ConnectionStatus(BaseModel):
+    is_connected: bool
+    error: Optional[str] = None
+    last_checked: str
+
+@app.get("/config/vectordb", response_model=VectorDBResponse)
+async def get_vectordb_config(user=Depends(get_admin_user)):
+    """Get the current vector database configuration."""
+    return VectorDBResponse(
+        current_db=VECTOR_DB,
+        available_dbs=["qdrant", "chroma", "milvus", "opensearch", "pgvector"]
+    )
+
+@app.post("/config/vectordb")
+async def update_vectordb_config(config: VectorDBConfig, user=Depends(get_admin_user)):
+    """Update the vector database configuration."""
+    try:
+        if config.type != "qdrant":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Only Qdrant is currently supported"
+            )
+        
+        qdrant_config = config.config.get("qdrant", {})
+        uri = qdrant_config.get("uri")
+        if not uri:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Qdrant URI is required"
+            )
+        
+        try:
+            parsed = urlparse(uri)
+            if not parsed.scheme or not parsed.netloc:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Invalid URI format"
+                )
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Invalid URI format"
+            )
+            
+        # Update environment
+        os.environ["QDRANT_URI"] = uri
+        if api_key := qdrant_config.get("apiKey"):
+            os.environ["QDRANT_API_KEY"] = api_key
+        
+        # Create new client instance
+        app.state.vector_db_client = QdrantClient()
+        
+        return {"message": "Vector database configuration updated successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to update vector database configuration: {str(e)}"
+        )
+
+@app.post("/config/vectordb/test", response_model=ConnectionStatus)
+async def test_vectordb_config(config: VectorDBConfig, user=Depends(get_admin_user)):
+    """Test connection to the vector database."""
+    try:
+        if config.type != "qdrant":
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Only Qdrant is currently supported"
+            )
+        
+        qdrant_config = config.config.get("qdrant", {})
+        if not qdrant_config:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Missing Qdrant configuration"
+            )
+        
+        uri = qdrant_config.get("uri")
+        if not uri:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="Missing Qdrant URI"
+            )
+            
+        # Initialize client with optional API key
+        client_args = {"url": uri}
+        if api_key := qdrant_config.get("apiKey"):
+            client_args["api_key"] = api_key
+
+        try:
+            client = Qclient(**client_args)
+            # Test connection by listing collections
+            client.get_collections()
+            return ConnectionStatus(
+                is_connected=True,
+                error=None,
+                last_checked=datetime.now().isoformat(),
+            )
+        except Exception as e:
+            return ConnectionStatus(
+                is_connected=False,
+                error=str(e),
+                last_checked=datetime.now().isoformat(),
+            )
+    except HTTPException as e:
+        return ConnectionStatus(
+            is_connected=False,
+            error=e.detail,
+            last_checked=datetime.now().isoformat()
+        )
+    except Exception as e:
+        logging.error(f"Vector DB test failed: {str(e)}")
+        return ConnectionStatus(
+            is_connected=False,
+            error=str(e),
+            last_checked=datetime.now().isoformat()
+        )
 
 if ENV == "dev":
 

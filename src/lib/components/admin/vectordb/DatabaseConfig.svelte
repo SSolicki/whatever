@@ -1,13 +1,14 @@
 <script lang="ts">
     import { createEventDispatcher } from 'svelte';
     import type { DBConfig, VectorDBType, ConnectionStatus } from '$lib/types/vectordb';
+    import { DEFAULT_DB_CONFIG } from '$lib/types/vectordb';
     import SensitiveInput from '$lib/components/common/SensitiveInput.svelte';
     import Tooltip from '$lib/components/common/Tooltip.svelte';
     import Modal from '$lib/components/common/Modal.svelte';
     import i18n from '$lib/i18n';
     import { toast } from 'svelte-sonner';
 
-    export let config: DBConfig;
+    export let config: DBConfig = DEFAULT_DB_CONFIG;
     export let onSave: (config: DBConfig) => Promise<void>;
     export let onTest: (config: DBConfig) => Promise<ConnectionStatus>;
 
@@ -15,7 +16,7 @@
     // Initialize i18n with vectordb namespace
     let t = (key: string, options?: any) => key; // Default function that returns the key
     $: if ($i18n) {
-        t = (key: string, options?: any) => $i18n.t(key, { ns: 'vectordb', ...options });
+        t = $i18n.t.bind($i18n);
     }
 
     let loading = false;
@@ -24,10 +25,38 @@
 
     const dbTypes: VectorDBType[] = ['milvus', 'qdrant', 'opensearch', 'pgvector', 'chroma'];
 
+    function transformConfig(config: DBConfig): DBConfig {
+        // Get the selected database type's config
+        const selectedConfig = config.config[config.type];
+        
+        // For Qdrant, ensure we have the required fields and proper nesting
+        if (config.type === 'qdrant') {
+            return {
+                type: config.type,
+                config: {
+                    qdrant: {  // Maintain nesting under 'qdrant' key
+                        uri: selectedConfig.uri || '',
+                        apiKey: selectedConfig.apiKey || ''  // Use empty string for optional API key
+                    }
+                }
+            };
+        }
+
+        // For other database types, maintain proper nesting
+        return {
+            type: config.type,
+            config: {
+                [config.type]: selectedConfig  // Nest under the database type key
+            }
+        };
+    }
+
     async function handleTest() {
         try {
             loading = true;
-            currentStatus = await onTest(config);
+            // Transform config before sending
+            const transformedConfig = transformConfig(config);
+            currentStatus = await onTest(transformedConfig);
             if (currentStatus.isConnected) {
                 toast.success(t('Connection successful'));
             } else {
@@ -43,7 +72,9 @@
     async function handleSave() {
         try {
             loading = true;
-            await onSave(config);
+            // Transform config before sending
+            const transformedConfig = transformConfig(config);
+            await onSave(transformedConfig);
             toast.success(t('Configuration saved'));
         } catch (error) {
             toast.error(error.message);
@@ -141,12 +172,14 @@
                     placeholder="http://localhost:6334"
                 />
                 <label class="text-sm font-medium" for="qdrantApiKey">
-                    {t('API Key')}
+                    {t('API Key')} <span class="text-xs text-gray-500">(optional)</span>
                 </label>
                 <SensitiveInput
                     id="qdrantApiKey"
                     bind:value={config.config.qdrant.apiKey}
                     type="password"
+                    required={false}
+                    placeholder="Leave empty for local Qdrant"
                 />
             </div>
         {/if}
