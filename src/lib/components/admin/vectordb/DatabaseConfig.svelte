@@ -26,29 +26,16 @@
     const dbTypes: VectorDBType[] = ['milvus', 'qdrant', 'opensearch', 'pgvector', 'chroma'];
 
     function transformConfig(config: DBConfig): DBConfig {
-        // Get the selected database type's config
-        const selectedConfig = config.config[config.type];
+        // Create a deep copy of the original config to preserve all DB configs
+        const newConfig = JSON.parse(JSON.stringify(config));
         
-        // For Qdrant, ensure we have the required fields and proper nesting
-        if (config.type === 'qdrant') {
-            return {
-                type: config.type,
-                config: {
-                    qdrant: {  // Maintain nesting under 'qdrant' key
-                        uri: selectedConfig.uri || '',
-                        apiKey: selectedConfig.apiKey || ''  // Use empty string for optional API key
-                    }
-                }
-            };
-        }
-
-        // For other database types, maintain proper nesting
-        return {
-            type: config.type,
-            config: {
-                [config.type]: selectedConfig  // Nest under the database type key
-            }
+        // Update only the selected DB's configuration
+        const selectedConfig = config.config[config.type];
+        newConfig.config[config.type] = {
+            ...selectedConfig  // Keep all properties of the selected DB
         };
+        
+        return newConfig;
     }
 
     async function handleTest() {

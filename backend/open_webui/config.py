@@ -113,10 +113,7 @@ DEFAULT_CONFIG = {
                 "content": "Help me study vocabulary: write a sentence for me to fill in the blank, and I'll try to pick the correct option.",
             },
             {
-                "title": [
-                    "Give me ideas",
-                    "for what to do with my kids' art",
-                ],
+                "title": ["Give me ideas", "for what to do with my kids' art"],
                 "content": "What are 5 creative things I could do with my kids' art? I don't want to throw them away, but it's also so much clutter.",
             },
             {
@@ -124,10 +121,7 @@ DEFAULT_CONFIG = {
                 "content": "Tell me a random fun fact about the Roman Empire",
             },
             {
-                "title": [
-                    "Show me a code snippet",
-                    "of a website's sticky header",
-                ],
+                "title": ["Show me a code snippet", "of a website's sticky header"],
                 "content": "Show me a code snippet of a website's sticky header in CSS and JavaScript.",
             },
             {

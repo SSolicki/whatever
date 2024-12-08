@@ -1497,9 +1497,9 @@ class VectorDBResponse(BaseModel):
     available_dbs: list[VectorDBType]
 
 class ConnectionStatus(BaseModel):
-    is_connected: bool
+    isConnected: bool
     error: Optional[str] = None
-    last_checked: str
+    lastChecked: str
 
 @app.get("/config/vectordb", response_model=VectorDBResponse)
 async def get_vectordb_config(user=Depends(get_admin_user)):
@@ -1591,28 +1591,28 @@ async def test_vectordb_config(config: VectorDBConfig, user=Depends(get_admin_us
             # Test connection by listing collections
             client.get_collections()
             return ConnectionStatus(
-                is_connected=True,
+                isConnected=True,
                 error=None,
-                last_checked=datetime.now().isoformat(),
+                lastChecked=datetime.now().isoformat(),
             )
         except Exception as e:
             return ConnectionStatus(
-                is_connected=False,
+                isConnected=False,
                 error=str(e),
-                last_checked=datetime.now().isoformat(),
+                lastChecked=datetime.now().isoformat(),
             )
     except HTTPException as e:
         return ConnectionStatus(
-            is_connected=False,
+            isConnected=False,
             error=e.detail,
-            last_checked=datetime.now().isoformat()
+            lastChecked=datetime.now().isoformat()
         )
     except Exception as e:
         logging.error(f"Vector DB test failed: {str(e)}")
         return ConnectionStatus(
-            is_connected=False,
+            isConnected=False,
             error=str(e),
-            last_checked=datetime.now().isoformat()
+            lastChecked=datetime.now().isoformat()
         )
 
 if ENV == "dev":
