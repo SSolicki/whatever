@@ -20,7 +20,7 @@ services:
       context: .
       target: base
     command: ["bash", "dev.sh"]
-    env_file: ".env"
+    env_file: ".env.dev"
     environment:
       - ENV=dev
       - WEBUI_AUTH=False
