@@ -79,7 +79,7 @@
 			const vectorConfig = await getVectorDBConfig(localStorage.token);
 			dbConfig = {
 				type: vectorConfig.current_db,
-				config: dbConfig.config // Keep the default config structure
+				config: DEFAULT_DB_CONFIG.config // Keep the default config structure since API doesn't return it
 			};
 
 			// Load embedding configuration

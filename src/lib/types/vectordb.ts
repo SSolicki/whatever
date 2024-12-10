@@ -18,19 +18,13 @@ export const DEFAULT_DB_CONFIG: DBConfig = {
         },
         opensearch: {
             uri: '',
-            ssl: false,
-            certVerify: false,
             username: '',
             password: ''
         },
         pgvector: {
-            dbUrl: ''
+            uri: ''
         },
-        chroma: {
-            httpHost: 'localhost',
-            httpPort: 8000,
-            ssl: false
-        }
+        chroma: {}
     }
 };
 
@@ -58,10 +52,6 @@ export interface DBConfig {
         opensearch?: {
             /** OpenSearch server URI */
             uri: string;
-            /** Enable SSL */
-            ssl: boolean;
-            /** Verify SSL certificate */
-            certVerify: boolean;
             /** OpenSearch username */
             username: string;
             /** OpenSearch password */
@@ -70,7 +60,7 @@ export interface DBConfig {
         /** PGVector configuration */
         pgvector?: {
             /** PostgreSQL connection URL */
-            dbUrl: string;
+            uri: string;
         };
         /** Chroma configuration */
         chroma?: {

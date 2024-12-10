@@ -144,6 +144,36 @@ DEFAULT_CONFIG = {
             },
         ],
     },
+    "vector_db": {
+        "type": "chroma",  # Default to chroma
+        "chroma": {
+            "tenant": chromadb.DEFAULT_TENANT,
+            "database": chromadb.DEFAULT_DATABASE,
+            "http_host": "",
+            "http_port": 8000,
+            "http_ssl": False,
+            "auth_provider": "",
+            "auth_credentials": "",
+            "http_headers": None
+        },
+        "milvus": {
+            "uri": ""
+        },
+        "qdrant": {
+            "uri": "",
+            "api_key": ""
+        },
+        "opensearch": {
+            "uri": "",
+            "ssl": False,
+            "cert_verify": False,
+            "username": "",
+            "password": ""
+        },
+        "pgvector": {
+            "db_url": ""
+        }
+    }
 }
 
 
@@ -1004,45 +1034,118 @@ TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE = PersistentConfig(
 # Vector Database
 ####################################
 
-VECTOR_DB = os.environ.get("VECTOR_DB", "chroma")
+VECTOR_DB = PersistentConfig(
+    "VECTOR_DB",
+    "vector_db.type",
+    os.environ.get("VECTOR_DB", "chroma")
+)
 
 # Chroma
 CHROMA_DATA_PATH = f"{DATA_DIR}/vector_db"
-CHROMA_TENANT = os.environ.get("CHROMA_TENANT", chromadb.DEFAULT_TENANT)
-CHROMA_DATABASE = os.environ.get("CHROMA_DATABASE", chromadb.DEFAULT_DATABASE)
-CHROMA_HTTP_HOST = os.environ.get("CHROMA_HTTP_HOST", "")
-CHROMA_HTTP_PORT = int(os.environ.get("CHROMA_HTTP_PORT", "8000"))
-CHROMA_CLIENT_AUTH_PROVIDER = os.environ.get("CHROMA_CLIENT_AUTH_PROVIDER", "")
-CHROMA_CLIENT_AUTH_CREDENTIALS = os.environ.get("CHROMA_CLIENT_AUTH_CREDENTIALS", "")
-# Comma-separated list of header=value pairs
-CHROMA_HTTP_HEADERS = os.environ.get("CHROMA_HTTP_HEADERS", "")
-if CHROMA_HTTP_HEADERS:
-    CHROMA_HTTP_HEADERS = dict(
-        [pair.split("=") for pair in CHROMA_HTTP_HEADERS.split(",")]
-    )
+CHROMA_TENANT = PersistentConfig(
+    "CHROMA_TENANT",
+    "vector_db.chroma.tenant",
+    os.environ.get("CHROMA_TENANT", chromadb.DEFAULT_TENANT)
+)
+CHROMA_DATABASE = PersistentConfig(
+    "CHROMA_DATABASE",
+    "vector_db.chroma.database",
+    os.environ.get("CHROMA_DATABASE", chromadb.DEFAULT_DATABASE)
+)
+CHROMA_HTTP_HOST = PersistentConfig(
+    "CHROMA_HTTP_HOST",
+    "vector_db.chroma.http_host",
+    os.environ.get("CHROMA_HTTP_HOST", "")
+)
+CHROMA_HTTP_PORT = PersistentConfig(
+    "CHROMA_HTTP_PORT",
+    "vector_db.chroma.http_port",
+    int(os.environ.get("CHROMA_HTTP_PORT", "8000"))
+)
+CHROMA_CLIENT_AUTH_PROVIDER = PersistentConfig(
+    "CHROMA_CLIENT_AUTH_PROVIDER",
+    "vector_db.chroma.auth_provider",
+    os.environ.get("CHROMA_CLIENT_AUTH_PROVIDER", "")
+)
+CHROMA_CLIENT_AUTH_CREDENTIALS = PersistentConfig(
+    "CHROMA_CLIENT_AUTH_CREDENTIALS",
+    "vector_db.chroma.auth_credentials",
+    os.environ.get("CHROMA_CLIENT_AUTH_CREDENTIALS", "")
+)
+
+# Parse HTTP headers from environment
+_chroma_headers = os.environ.get("CHROMA_HTTP_HEADERS", "")
+if _chroma_headers:
+    _chroma_headers = dict([pair.split("=") for pair in _chroma_headers.split(",")])
 else:
-    CHROMA_HTTP_HEADERS = None
-CHROMA_HTTP_SSL = os.environ.get("CHROMA_HTTP_SSL", "false").lower() == "true"
-# this uses the model defined in the Dockerfile ENV variable. If you dont use docker or docker based deployments such as k8s, the default embedding model will be used (sentence-transformers/all-MiniLM-L6-v2)
+    _chroma_headers = None
+
+CHROMA_HTTP_HEADERS = PersistentConfig(
+    "CHROMA_HTTP_HEADERS",
+    "vector_db.chroma.http_headers",
+    _chroma_headers
+)
+CHROMA_HTTP_SSL = PersistentConfig(
+    "CHROMA_HTTP_SSL",
+    "vector_db.chroma.http_ssl",
+    os.environ.get("CHROMA_HTTP_SSL", "false").lower() == "true"
+)
 
 # Milvus
-
-MILVUS_URI = os.environ.get("MILVUS_URI", f"{DATA_DIR}/vector_db/milvus.db")
+MILVUS_URI = PersistentConfig(
+    "MILVUS_URI",
+    "vector_db.milvus.uri",
+    os.environ.get("MILVUS_URI", f"{DATA_DIR}/vector_db/milvus.db")
+)
 
 # Qdrant
-QDRANT_URI = os.environ.get("QDRANT_URI", None)
-QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY", None)
+QDRANT_URI = PersistentConfig(
+    "QDRANT_URI",
+    "vector_db.qdrant.uri",
+    os.environ.get("QDRANT_URI", "")
+)
+QDRANT_API_KEY = PersistentConfig(
+    "QDRANT_API_KEY",
+    "vector_db.qdrant.api_key",
+    os.environ.get("QDRANT_API_KEY", "")
+)
 
 # OpenSearch
-OPENSEARCH_URI = os.environ.get("OPENSEARCH_URI", "https://localhost:9200")
-OPENSEARCH_SSL = os.environ.get("OPENSEARCH_SSL", True)
-OPENSEARCH_CERT_VERIFY = os.environ.get("OPENSEARCH_CERT_VERIFY", False)
-OPENSEARCH_USERNAME = os.environ.get("OPENSEARCH_USERNAME", None)
-OPENSEARCH_PASSWORD = os.environ.get("OPENSEARCH_PASSWORD", None)
+OPENSEARCH_URI = PersistentConfig(
+    "OPENSEARCH_URI",
+    "vector_db.opensearch.uri",
+    os.environ.get("OPENSEARCH_URI", "https://localhost:9200")
+)
+OPENSEARCH_SSL = PersistentConfig(
+    "OPENSEARCH_SSL",
+    "vector_db.opensearch.ssl",
+    os.environ.get("OPENSEARCH_SSL", True)
+)
+OPENSEARCH_CERT_VERIFY = PersistentConfig(
+    "OPENSEARCH_CERT_VERIFY",
+    "vector_db.opensearch.cert_verify",
+    os.environ.get("OPENSEARCH_CERT_VERIFY", False)
+)
+OPENSEARCH_USERNAME = PersistentConfig(
+    "OPENSEARCH_USERNAME",
+    "vector_db.opensearch.username",
+    os.environ.get("OPENSEARCH_USERNAME", "")
+)
+OPENSEARCH_PASSWORD = PersistentConfig(
+    "OPENSEARCH_PASSWORD",
+    "vector_db.opensearch.password",
+    os.environ.get("OPENSEARCH_PASSWORD", "")
+)
 
 # Pgvector
-PGVECTOR_DB_URL = os.environ.get("PGVECTOR_DB_URL", DATABASE_URL)
-if VECTOR_DB == "pgvector" and not PGVECTOR_DB_URL.startswith("postgres"):
+PGVECTOR_DB_URL = PersistentConfig(
+    "PGVECTOR_DB_URL",
+    "vector_db.pgvector.db_url",
+    os.environ.get("PGVECTOR_DB_URL", DATABASE_URL)
+)
+
+# Validate pgvector configuration
+if VECTOR_DB.value == "pgvector" and not PGVECTOR_DB_URL.value.startswith("postgres"):
     raise ValueError(
         "Pgvector requires setting PGVECTOR_DB_URL or using Postgres with vector extension as the primary database."
     )

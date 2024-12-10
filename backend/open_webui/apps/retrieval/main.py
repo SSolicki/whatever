@@ -22,7 +22,6 @@ from open_webui.storage.provider import Storage
 from open_webui.apps.webui.models.knowledge import Knowledges
 from open_webui.apps.retrieval.vector.connector import VECTOR_DB_CLIENT
 from open_webui.apps.retrieval.vector.dbs.qdrant import QdrantClient, Qclient
-from open_webui.config import VECTOR_DB
 
 # Document loaders
 from open_webui.apps.retrieval.loaders.main import Loader
@@ -43,7 +42,6 @@ from open_webui.apps.retrieval.web.serply import search_serply
 from open_webui.apps.retrieval.web.serpstack import search_serpstack
 from open_webui.apps.retrieval.web.tavily import search_tavily
 from open_webui.apps.retrieval.web.bing import search_bing
-
 
 from open_webui.apps.retrieval.utils import (
     get_embedding_function,
@@ -87,7 +85,6 @@ from open_webui.config import (
     RAG_RERANKING_MODEL,
     RAG_RERANKING_MODEL_AUTO_UPDATE,
     RAG_RERANKING_MODEL_TRUST_REMOTE_CODE,
-    DEFAULT_RAG_TEMPLATE,
     RAG_TEMPLATE,
     RAG_TOP_K,
     RAG_WEB_SEARCH_CONCURRENT_REQUESTS,
@@ -110,6 +107,14 @@ from open_webui.config import (
     YOUTUBE_LOADER_LANGUAGE,
     DEFAULT_LOCALE,
     AppConfig,
+    VECTOR_DB,
+    QDRANT_URI,
+    QDRANT_API_KEY,
+    OPENSEARCH_URI,
+    OPENSEARCH_USERNAME,
+    OPENSEARCH_PASSWORD,
+    MILVUS_URI,
+    PGVECTOR_DB_URL,
 )
 from open_webui.constants import ERROR_MESSAGES
 from open_webui.env import (
@@ -1495,6 +1500,23 @@ class VectorDBConfig(BaseModel):
 class VectorDBResponse(BaseModel):
     current_db: VectorDBType
     available_dbs: list[VectorDBType]
+    config: dict = {
+        "qdrant": {
+            "uri": "",
+            "apiKey": ""
+        },
+        "opensearch": {
+            "uri": "",
+            "username": "",
+            "password": ""
+        },
+        "milvus": {
+            "uri": ""
+        },
+        "pgvector": {
+            "uri": ""
+        }
+    }
 
 class ConnectionStatus(BaseModel):
     isConnected: bool
@@ -1504,49 +1526,187 @@ class ConnectionStatus(BaseModel):
 @app.get("/config/vectordb", response_model=VectorDBResponse)
 async def get_vectordb_config(user=Depends(get_admin_user)):
     """Get the current vector database configuration."""
+    config = {
+        "qdrant": {
+            "uri": QDRANT_URI.value if QDRANT_URI else "",
+            "apiKey": QDRANT_API_KEY.value if QDRANT_API_KEY else ""
+        },
+        "opensearch": {
+            "uri": OPENSEARCH_URI.value if OPENSEARCH_URI else "",
+            "username": OPENSEARCH_USERNAME.value if OPENSEARCH_USERNAME else "",
+            "password": OPENSEARCH_PASSWORD.value if OPENSEARCH_PASSWORD else ""
+        },
+        "milvus": {
+            "uri": MILVUS_URI.value if MILVUS_URI else ""
+        },
+        "pgvector": {
+            "uri": PGVECTOR_DB_URL.value if PGVECTOR_DB_URL else ""
+        }
+    }
+    
     return VectorDBResponse(
-        current_db=VECTOR_DB,
-        available_dbs=["qdrant", "chroma", "milvus", "opensearch", "pgvector"]
+        current_db=VECTOR_DB.value,
+        available_dbs=["qdrant", "chroma", "milvus", "opensearch", "pgvector"],
+        config=config
     )
+
 
 @app.post("/config/vectordb")
 async def update_vectordb_config(config: VectorDBConfig, user=Depends(get_admin_user)):
     """Update the vector database configuration."""
     try:
-        if config.type != "qdrant":
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Only Qdrant is currently supported"
-            )
-        
-        qdrant_config = config.config.get("qdrant", {})
-        uri = qdrant_config.get("uri")
-        if not uri:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Qdrant URI is required"
-            )
-        
-        try:
-            parsed = urlparse(uri)
-            if not parsed.scheme or not parsed.netloc:
+        # Update configuration using PersistentConfig
+        VECTOR_DB.value = config.type
+        VECTOR_DB.save()
+
+        if config.type == "qdrant":
+            qdrant_config = config.config.get("qdrant", {})
+            uri = qdrant_config.get("uri")
+            if not uri:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Qdrant URI is required"
+                )
+            
+            try:
+                parsed = urlparse(uri)
+                if not parsed.scheme or not parsed.netloc:
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail="Invalid URI format"
+                    )
+            except Exception:
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail="Invalid URI format"
                 )
-        except Exception:
+            
+            QDRANT_URI.value = uri
+            QDRANT_URI.save()
+            
+            if api_key := qdrant_config.get("apiKey"):
+                QDRANT_API_KEY.value = api_key
+                QDRANT_API_KEY.save()
+
+            # Import and create new client instance
+            from open_webui.apps.retrieval.vector.dbs.qdrant import QdrantClient
+            new_client = QdrantClient()
+
+        elif config.type == "opensearch":
+            opensearch_config = config.config.get("opensearch", {})
+            uri = opensearch_config.get("uri")
+            if not uri:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="OpenSearch URI is required"
+                )
+            
+            try:
+                parsed = urlparse(uri)
+                if not parsed.scheme or not parsed.netloc:
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail="Invalid URI format"
+                    )
+            except Exception:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Invalid URI format"
+                )
+            
+            OPENSEARCH_URI.value = uri
+            OPENSEARCH_URI.save()
+            
+            if username := opensearch_config.get("username"):
+                OPENSEARCH_USERNAME.value = username
+                OPENSEARCH_USERNAME.save()
+                
+            if password := opensearch_config.get("password"):
+                OPENSEARCH_PASSWORD.value = password
+                OPENSEARCH_PASSWORD.save()
+
+            # Import and create new client instance
+            from open_webui.apps.retrieval.vector.dbs.opensearch import OpenSearchClient
+            new_client = OpenSearchClient()
+
+        elif config.type == "milvus":
+            milvus_config = config.config.get("milvus", {})
+            uri = milvus_config.get("uri")
+            if not uri:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Milvus URI is required"
+                )
+            
+            try:
+                parsed = urlparse(uri)
+                if not parsed.scheme or not parsed.netloc:
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail="Invalid URI format"
+                    )
+            except Exception:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Invalid URI format"
+                )
+            
+            MILVUS_URI.value = uri
+            MILVUS_URI.save()
+
+            # Import and create new client instance
+            from open_webui.apps.retrieval.vector.dbs.milvus import MilvusClient
+            new_client = MilvusClient()
+
+        elif config.type == "pgvector":
+            pgvector_config = config.config.get("pgvector", {})
+            uri = pgvector_config.get("uri")
+            if not uri:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="PGVector URI is required"
+                )
+            
+            try:
+                parsed = urlparse(uri)
+                if not parsed.scheme or not parsed.netloc:
+                    raise HTTPException(
+                        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                        detail="Invalid URI format"
+                    )
+            except Exception:
+                raise HTTPException(
+                    status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    detail="Invalid URI format"
+                )
+            
+            PGVECTOR_DB_URL.value = uri
+            PGVECTOR_DB_URL.save()
+
+            # Import and create new client instance
+            from open_webui.apps.retrieval.vector.dbs.pgvector import PgvectorClient
+            new_client = PgvectorClient()
+
+        elif config.type == "chroma":
+            # Chroma is the default local database, no configuration needed
+            from open_webui.apps.retrieval.vector.dbs.chroma import ChromaClient
+            new_client = ChromaClient()
+        else:
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Invalid URI format"
+                detail=f"Unsupported vector database type: {config.type}"
+            )
+
+        # Test the connection before updating the global client
+        if not await new_client.test_connection():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to connect to {config.type} server with the provided configuration"
             )
             
-        # Update environment
-        os.environ["QDRANT_URI"] = uri
-        if api_key := qdrant_config.get("apiKey"):
-            os.environ["QDRANT_API_KEY"] = api_key
-        
-        # Create new client instance
-        app.state.vector_db_client = QdrantClient()
+        # Update the global client instance
+        app.state.vector_db_client = new_client
+        globals()['VECTOR_DB_CLIENT'] = new_client
         
         return {"message": "Vector database configuration updated successfully"}
     except HTTPException:
@@ -1561,54 +1721,58 @@ async def update_vectordb_config(config: VectorDBConfig, user=Depends(get_admin_
 async def test_vectordb_config(config: VectorDBConfig, user=Depends(get_admin_user)):
     """Test connection to the vector database."""
     try:
-        if config.type != "qdrant":
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Only Qdrant is currently supported"
-            )
-        
-        qdrant_config = config.config.get("qdrant", {})
-        if not qdrant_config:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Missing Qdrant configuration"
-            )
-        
-        uri = qdrant_config.get("uri")
-        if not uri:
-            raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-                detail="Missing Qdrant URI"
-            )
+        if config.type == "qdrant":
+            from open_webui.apps.retrieval.vector.dbs.qdrant import QdrantClient
+            # Store original values
+            original_uri = QDRANT_URI.value
+            original_api_key = QDRANT_API_KEY.value
             
-        # Initialize client with optional API key
-        client_args = {"url": uri}
-        if api_key := qdrant_config.get("apiKey"):
-            client_args["api_key"] = api_key
+            try:
+                # Temporarily set values for testing
+                test_uri = config.config.get("qdrant", {}).get("uri", "")
+                test_api_key = config.config.get("qdrant", {}).get("apiKey", "")
+                
+                # Create test client
+                QDRANT_URI.value = test_uri
+                QDRANT_API_KEY.value = test_api_key
+                client = QdrantClient()
+            finally:
+                # Restore original values
+                QDRANT_URI.value = original_uri
+                QDRANT_API_KEY.value = original_api_key
+        elif config.type == "opensearch":
+            from open_webui.apps.retrieval.vector.dbs.opensearch import OpenSearchClient
+            client = OpenSearchClient(
+                uri=config.config.get("opensearch", {}).get("uri", ""),
+                username=config.config.get("opensearch", {}).get("username", ""),
+                password=config.config.get("opensearch", {}).get("password", "")
+            )
+        elif config.type == "milvus":
+            from open_webui.apps.retrieval.vector.dbs.milvus import MilvusClient
+            client = MilvusClient(
+                uri=config.config.get("milvus", {}).get("uri", "")
+            )
+        elif config.type == "pgvector":
+            from open_webui.apps.retrieval.vector.dbs.pgvector import PgvectorClient
+            client = PgvectorClient(
+                uri=config.config.get("pgvector", {}).get("uri", "")
+            )
+        elif config.type == "chroma":
+            from open_webui.apps.retrieval.vector.dbs.chroma import ChromaClient
+            client = ChromaClient()
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Unsupported vector database type: {config.type}"
+            )
 
-        try:
-            client = Qclient(**client_args)
-            # Test connection by listing collections
-            client.get_collections()
-            return ConnectionStatus(
-                isConnected=True,
-                error=None,
-                lastChecked=datetime.now().isoformat(),
-            )
-        except Exception as e:
-            return ConnectionStatus(
-                isConnected=False,
-                error=str(e),
-                lastChecked=datetime.now().isoformat(),
-            )
-    except HTTPException as e:
+        is_connected = await client.test_connection()
         return ConnectionStatus(
-            isConnected=False,
-            error=e.detail,
-            lastChecked=datetime.now().isoformat()
+            isConnected=is_connected,
+            error=None if is_connected else "Failed to connect to the server",
+            lastChecked=datetime.now().isoformat(),
         )
     except Exception as e:
-        logging.error(f"Vector DB test failed: {str(e)}")
         return ConnectionStatus(
             isConnected=False,
             error=str(e),

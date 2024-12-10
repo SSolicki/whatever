@@ -24,29 +24,27 @@ class ChromaClient:
             "allow_reset": True,
             "anonymized_telemetry": False,
         }
-        if CHROMA_CLIENT_AUTH_PROVIDER is not None:
-            settings_dict["chroma_client_auth_provider"] = CHROMA_CLIENT_AUTH_PROVIDER
-        if CHROMA_CLIENT_AUTH_CREDENTIALS is not None:
-            settings_dict["chroma_client_auth_credentials"] = (
-                CHROMA_CLIENT_AUTH_CREDENTIALS
-            )
+        if CHROMA_CLIENT_AUTH_PROVIDER.value:
+            settings_dict["chroma_client_auth_provider"] = CHROMA_CLIENT_AUTH_PROVIDER.value
+        if CHROMA_CLIENT_AUTH_CREDENTIALS.value:
+            settings_dict["chroma_client_auth_credentials"] = CHROMA_CLIENT_AUTH_CREDENTIALS.value
 
-        if CHROMA_HTTP_HOST != "":
+        if CHROMA_HTTP_HOST.value:
             self.client = chromadb.HttpClient(
-                host=CHROMA_HTTP_HOST,
-                port=CHROMA_HTTP_PORT,
-                headers=CHROMA_HTTP_HEADERS,
-                ssl=CHROMA_HTTP_SSL,
-                tenant=CHROMA_TENANT,
-                database=CHROMA_DATABASE,
+                host=CHROMA_HTTP_HOST.value,
+                port=CHROMA_HTTP_PORT.value,
+                headers=CHROMA_HTTP_HEADERS.value,
+                ssl=CHROMA_HTTP_SSL.value,
+                tenant=CHROMA_TENANT.value,
+                database=CHROMA_DATABASE.value,
                 settings=Settings(**settings_dict),
             )
         else:
             self.client = chromadb.PersistentClient(
                 path=CHROMA_DATA_PATH,
                 settings=Settings(**settings_dict),
-                tenant=CHROMA_TENANT,
-                database=CHROMA_DATABASE,
+                tenant=CHROMA_TENANT.value,
+                database=CHROMA_DATABASE.value,
             )
 
     def has_collection(self, collection_name: str) -> bool:

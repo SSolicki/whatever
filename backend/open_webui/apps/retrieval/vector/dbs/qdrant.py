@@ -15,8 +15,8 @@ NO_LIMIT = 999999999
 class QdrantClient:
     def __init__(self):
         self.collection_prefix = "open-webui"
-        self.QDRANT_URI = QDRANT_URI
-        self.QDRANT_API_KEY = QDRANT_API_KEY
+        self.QDRANT_URI = QDRANT_URI.value if QDRANT_URI.value else None
+        self.QDRANT_API_KEY = QDRANT_API_KEY.value if QDRANT_API_KEY.value else None
         self.client = None
         if self.QDRANT_URI:
             try:

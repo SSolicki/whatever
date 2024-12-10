@@ -128,7 +128,7 @@
             </label>
             <select
                 id="dbType"
-                class="form-select rounded-lg"
+                class="form-select rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
                 bind:value={config.type}
             >
                 {#each dbTypes as type}
@@ -153,7 +153,8 @@
                 <label class="text-sm font-medium" for="qdrantUri">
                     {t('Qdrant URI')}
                 </label>
-                <SensitiveInput
+                <input
+                    class="flex-1 w-full rounded-lg text-sm bg-transparent outline-none"
                     id="qdrantUri"
                     bind:value={config.config.qdrant.uri}
                     placeholder="http://localhost:6334"
@@ -169,25 +170,68 @@
                     placeholder="Leave empty for local Qdrant"
                 />
             </div>
+        {:else if config.type === 'opensearch'}
+            <div class="flex flex-col space-y-2">
+                <label class="text-sm font-medium" for="openSearchUri">
+                    {t('OpenSearch URI')}
+                </label>
+                <input
+                    id="openSearchUri"
+                    class="form-input rounded-lg"
+                    bind:value={config.config.opensearch.uri}
+                    placeholder="http://localhost:9200"
+                />
+                <label class="text-sm font-medium" for="openSearchUsername">
+                    {t('Username')}
+                </label>
+                <input
+                    id="openSearchUsername"
+                    class="form-input rounded-lg"
+                    bind:value={config.config.opensearch.username}
+                    placeholder="Username"
+                />
+                <label class="text-sm font-medium" for="openSearchPassword">
+                    {t('Password')}
+                </label>
+                <SensitiveInput
+                    id="openSearchPassword"
+                    bind:value={config.config.opensearch.password}
+                    type="password"
+                    placeholder="Password"
+                />
+            </div>
+        {:else if config.type === 'pgvector'}
+            <div class="flex flex-col space-y-2">
+                <label class="text-sm font-medium" for="pgvectorUri">
+                    {t('PostgreSQL Connection URI')}
+                </label>
+                <SensitiveInput
+                    id="pgvectorUri"
+                    bind:value={config.config.pgvector.uri}
+                    placeholder="postgresql://user:password@localhost:5432/dbname"
+                />
+            </div>
+        {:else if config.type === 'chroma'}
+            <div class="flex flex-col space-y-2">
+                <p class="text-sm text-gray-500">
+                    {t('Chroma is a local vector database and does not require additional configuration.')}
+                </p>
+            </div>
         {/if}
-        <!-- Add similar blocks for other database types -->
-    </div>
 
-    <div class="flex justify-end">
-        <button
-            class="px-4 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-full transition"
-            on:click={handleSave}
-            disabled={loading}
-        >
-            {loading ? t('Saving...') : t('Save Configuration')}
-        </button>
+        <div class="flex justify-end">
+            <button
+                class="px-4 py-2 text-sm font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-full transition"
+                on:click={handleSave}
+                disabled={loading}
+            >
+                {loading ? t('Saving...') : t('Save Configuration')}
+            </button>
+        </div>
     </div>
 </div>
 
-<Modal
-    bind:show={showConfigModal}
-    size="sm"
->
+<Modal bind:show={showConfigModal} maxWidth="sm">
     <div class="p-4 space-y-4">
         <h3 class="text-lg font-medium">{t('Import/Export Configuration')}</h3>
         <div class="space-y-2">
@@ -198,18 +242,20 @@
                 class="hidden"
                 id="configImport"
             />
-            <button
-                class="w-full px-3 py-2 text-sm font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg transition"
-                on:click={() => document.getElementById('configImport').click()}
-            >
-                {t('Import from File')}
-            </button>
-            <button
-                class="w-full px-3 py-2 text-sm font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg transition"
-                on:click={handleExport}
-            >
-                {t('Export to File')}
-            </button>
+            <div class="flex space-x-2">
+                <label
+                    for="configImport"
+                    class="px-4 py-2 text-sm font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-full transition cursor-pointer"
+                >
+                    {t('Import')}
+                </label>
+                <button
+                    class="px-4 py-2 text-sm font-medium bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-full transition"
+                    on:click={handleExport}
+                >
+                    {t('Export')}
+                </button>
+            </div>
         </div>
     </div>
 </Modal>
