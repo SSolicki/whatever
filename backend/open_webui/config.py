@@ -172,7 +172,11 @@ DEFAULT_CONFIG = {
         },
         "pgvector": {
             "db_url": ""
-        }
+        },
+        "pinecone": {
+            "api_key": "",
+            "environment": ""
+        },
     }
 }
 
@@ -1149,6 +1153,23 @@ if VECTOR_DB.value == "pgvector" and not PGVECTOR_DB_URL.value.startswith("postg
     raise ValueError(
         "Pgvector requires setting PGVECTOR_DB_URL or using Postgres with vector extension as the primary database."
     )
+    
+# Pinecone
+PINECONE_API_KEY = PersistentConfig(
+    "PINECONE_API_KEY",
+    "vector_db.pinecone.api_key",
+    os.environ.get("PINECONE_API_KEY", "")
+)
+PINECONE_ENVIRONMENT = PersistentConfig(
+    "PINECONE_ENVIRONMENT",
+    "vector_db.pinecone.environment",
+    os.environ.get("PINECONE_ENVIRONMENT", "")
+)
+PINECONE_INDEX_NAME = PersistentConfig(
+    "PINECONE_INDEX_NAME",
+    "vector_db.pinecone.index_name",
+    os.environ.get("PINECONE_INDEX_NAME", "")
+)
 
 ####################################
 # Information Retrieval (RAG)

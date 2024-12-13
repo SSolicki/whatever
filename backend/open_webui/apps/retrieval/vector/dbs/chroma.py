@@ -3,6 +3,7 @@ from chromadb import Settings
 from chromadb.utils.batch_utils import create_batches
 
 from typing import Optional
+import logging
 
 from open_webui.apps.retrieval.vector.main import VectorItem, SearchResult, GetResult
 from open_webui.config import (
@@ -46,6 +47,21 @@ class ChromaClient:
                 tenant=CHROMA_TENANT.value,
                 database=CHROMA_DATABASE.value,
             )
+
+    async def test_connection(self) -> bool:
+        """Test the connection to the Chroma server or persistent storage."""
+        try:
+            # Test connection by listing collections
+            try:
+                self.client.list_collections()
+                return True
+            except Exception as e:
+                logging.error(f"Failed to list collections: {str(e)}")
+                return False
+
+        except Exception as e:
+            logging.error(f"Chroma connection test failed: {str(e)}")
+            return False
 
     def has_collection(self, collection_name: str) -> bool:
         # Check if the collection exists based on the collection name.

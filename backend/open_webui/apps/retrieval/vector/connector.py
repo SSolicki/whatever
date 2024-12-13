@@ -16,6 +16,10 @@ elif VECTOR_DB == "pgvector":
     from open_webui.apps.retrieval.vector.dbs.pgvector import PgvectorClient
 
     VECTOR_DB_CLIENT = PgvectorClient()
+elif VECTOR_DB == "pinecone":
+    from open_webui.apps.retrieval.vector.dbs.pinecone import PineconeClient
+
+    VECTOR_DB_CLIENT = PineconeClient()
 else:
     from open_webui.apps.retrieval.vector.dbs.chroma import ChromaClient
 

@@ -1,6 +1,7 @@
 from pymilvus import MilvusClient as Client
 from pymilvus import FieldSchema, DataType
 import json
+import logging
 
 from typing import Optional
 
@@ -11,9 +12,24 @@ from open_webui.config import (
 
 
 class MilvusClient:
-    def __init__(self):
+    def __init__(self, uri=None):
         self.collection_prefix = "open_webui"
-        self.client = Client(uri=MILVUS_URI)
+        self.client = Client(uri=uri if uri else MILVUS_URI)
+
+    async def test_connection(self) -> bool:
+        """Test the connection to the Milvus server."""
+        try:
+            # Test connection by listing collections
+            try:
+                self.client.list_collections()
+                return True
+            except Exception as e:
+                logging.error(f"Failed to list collections: {str(e)}")
+                return False
+
+        except Exception as e:
+            logging.error(f"Milvus connection test failed: {str(e)}")
+            return False
 
     def _result_to_get_result(self, result) -> GetResult:
         ids = []

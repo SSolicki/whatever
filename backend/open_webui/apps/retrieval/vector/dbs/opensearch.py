@@ -9,17 +9,42 @@ from open_webui.config import (
     OPENSEARCH_USERNAME,
     OPENSEARCH_PASSWORD,
 )
-
+import logging
 
 class OpenSearchClient:
-    def __init__(self):
+    def __init__(self, uri=None, username=None, password=None):
+        """Initialize OpenSearch client with optional connection parameters."""
         self.index_prefix = "open_webui"
+        hosts = [uri] if uri else [OPENSEARCH_URI]
+        http_auth = (username, password) if username and password else (OPENSEARCH_USERNAME, OPENSEARCH_PASSWORD)
+        
+        # For testing connections to host.docker.internal or local development,
+        # we need to be more lenient with SSL verification
+        is_local = any(h for h in hosts if 'localhost' in h or 'host.docker.internal' in h)
+        verify_certs = False if is_local else OPENSEARCH_CERT_VERIFY
+        
         self.client = OpenSearch(
-            hosts=[OPENSEARCH_URI],
+            hosts=hosts,
             use_ssl=OPENSEARCH_SSL,
-            verify_certs=OPENSEARCH_CERT_VERIFY,
-            http_auth=(OPENSEARCH_USERNAME, OPENSEARCH_PASSWORD),
+            verify_certs=verify_certs,
+            ssl_show_warn=False,  # Disable SSL warnings for local development
+            http_auth=http_auth,
         )
+
+    async def test_connection(self) -> bool:
+        """Test the connection to the OpenSearch cluster."""
+        try:
+            # Test connection by checking cluster health
+            try:
+                self.client.cluster.health()
+                return True
+            except Exception as e:
+                logging.error(f"Failed to check cluster health: {str(e)}")
+                return False
+
+        except Exception as e:
+            logging.error(f"OpenSearch connection test failed: {str(e)}")
+            return False
 
     def _result_to_get_result(self, result) -> GetResult:
         ids = []

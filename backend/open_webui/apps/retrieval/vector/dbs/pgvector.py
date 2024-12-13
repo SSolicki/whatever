@@ -20,6 +20,7 @@ from sqlalchemy.ext.mutable import MutableDict
 
 from open_webui.apps.retrieval.vector.main import VectorItem, SearchResult, GetResult
 from open_webui.config import PGVECTOR_DB_URL
+import logging
 
 VECTOR_LENGTH = 1536
 Base = declarative_base()
@@ -36,16 +37,15 @@ class DocumentChunk(Base):
 
 
 class PgvectorClient:
-    def __init__(self) -> None:
-
+    def __init__(self, uri=None) -> None:
         # if no pgvector uri, use the existing database connection
-        if not PGVECTOR_DB_URL:
+        if not uri and not PGVECTOR_DB_URL:
             from open_webui.apps.webui.internal.db import Session
 
             self.session = Session
         else:
             engine = create_engine(
-                PGVECTOR_DB_URL, pool_pre_ping=True, poolclass=NullPool
+                uri if uri else PGVECTOR_DB_URL, pool_pre_ping=True, poolclass=NullPool
             )
             SessionLocal = sessionmaker(
                 autocommit=False, autoflush=False, bind=engine, expire_on_commit=False
@@ -77,10 +77,31 @@ class PgvectorClient:
             )
             self.session.commit()
             print("Initialization complete.")
+            logging.info("PgVector database initialized successfully")
         except Exception as e:
             self.session.rollback()
-            print(f"Error during initialization: {e}")
+            error_msg = f"Error during initialization: {e}"
+            logging.error(error_msg)
+            print(error_msg)
             raise
+
+    async def test_connection(self) -> bool:
+        """Test the connection to the PostgreSQL database and pgvector extension."""
+        try:
+            # Test basic connection
+            try:
+                # Check if pgvector extension is available
+                self.session.execute(text("SELECT * FROM pg_extension WHERE extname = 'vector'"))
+                # Test a simple vector operation to ensure pgvector works
+                self.session.execute(text(f"SELECT '[1,2,3]'::vector({VECTOR_LENGTH})"))
+                return True
+            except Exception as e:
+                logging.error(f"Failed to verify pgvector functionality: {str(e)}")
+                return False
+
+        except Exception as e:
+            logging.error(f"PostgreSQL connection test failed: {str(e)}")
+            return False
 
     def adjust_vector_length(self, vector: List[float]) -> List[float]:
         # Adjust vector to have length VECTOR_LENGTH
