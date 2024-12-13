@@ -14,6 +14,12 @@ services:
       - host.docker.internal:host-gateway
     volumes:
       - ./src:/app/src
+      - ./static:/app/static
+      - ./svelte.config.js:/app/svelte.config.js
+      - ./vite.config.ts:/app/vite.config.ts
+      - ./package.json:/app/package.json
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./.svelte-kit:/app/.svelte-kit
 
   backend:
     build:

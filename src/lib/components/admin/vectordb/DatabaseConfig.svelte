@@ -177,7 +177,7 @@
                 </label>
                 <input
                     id="openSearchUri"
-                    class="form-input rounded-lg"
+                    class="flex-1 w-full rounded-lg text-sm bg-transparent outline-none"
                     bind:value={config.config.opensearch.uri}
                     placeholder="http://localhost:9200"
                 />
@@ -186,7 +186,7 @@
                 </label>
                 <input
                     id="openSearchUsername"
-                    class="form-input rounded-lg"
+                    class="flex-1 w-full rounded-lg text-sm bg-transparent outline-none"
                     bind:value={config.config.opensearch.username}
                     placeholder="Username"
                 />

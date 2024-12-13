@@ -1,32 +1,28 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
-// /** @type {import('vite').Plugin} */
-// const viteServerConfig = {
-// 	name: 'log-request-middleware',
-// 	configureServer(server) {
-// 		server.middlewares.use((req, res, next) => {
-// 			res.setHeader('Access-Control-Allow-Origin', '*');
-// 			res.setHeader('Access-Control-Allow-Methods', 'GET');
-// 			res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-// 			res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
-// 			next();
-// 		});
-// 	}
-// };
-
 export default defineConfig({
 	plugins: [sveltekit()],
 	server: {
-		host: true,
-		port: 8080,
-		strictPort: true,
+		host: '0.0.0.0', // Allow external access (needed for Docker)
+		port: 5173,       // Default Vite port
+		strictPort: true, // Enforce the port
+		hmr: {
+			clientPort: 3000, // This should match the port exposed by Docker
+		},
 		proxy: {
-			'/ollama': {
-				target: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
+			'/api': {
+				target: 'http://backend:8080',
+				changeOrigin: true
+			},
+			'/ws': {
+				target: 'http://backend:8080',
 				changeOrigin: true,
-				rewrite: (path) => path.replace(/^\/ollama/, '')
+				ws: true
 			}
+		},
+		watch: {
+			usePolling: true, // Docker-specific fix for file watching
 		}
 	},
 	define: {
@@ -34,9 +30,10 @@ export default defineConfig({
 		APP_BUILD_HASH: JSON.stringify(process.env.APP_BUILD_HASH || 'dev-build')
 	},
 	build: {
-		sourcemap: true
+		sourcemap: true,   // Enable source maps for debugging
+		target: 'esnext'   // Modern JavaScript target
 	},
 	worker: {
-		format: 'es'
+		format: 'es'       // Ensure ES module format for workers
 	}
 });
