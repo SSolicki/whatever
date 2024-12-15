@@ -4,32 +4,23 @@
 	import {
 		getQuerySettings,
 		updateQuerySettings,
-		resetVectorDB,
 		getEmbeddingConfig,
 		updateEmbeddingConfig,
 		getRerankingConfig,
 		updateRerankingConfig,
 		resetUploadDir,
 		getRAGConfig,
-		updateRAGConfig,
-		getVectorDBConfig,
-		updateVectorDBConfig,
-		testVectorDBConfig
+		updateRAGConfig
 	} from '$lib/apis/retrieval';
 	import { knowledge, models } from '$lib/stores';
 	import { getKnowledgeBases } from '$lib/apis/knowledge';
 	import { uploadDir, deleteAllFiles, deleteFileById } from '$lib/apis/files';
-	import type { DBConfig, ConnectionStatus } from '$lib/types/vectordb';
-	import { DEFAULT_DB_CONFIG } from '$lib/types/vectordb';
-
 	import ResetUploadDirConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
-	import ResetVectorDBConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import SensitiveInput from '$lib/components/common/SensitiveInput.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import Switch from '$lib/components/common/Switch.svelte';
 	import { text } from '@sveltejs/kit';
 	import Textarea from '$lib/components/common/Textarea.svelte';
-	import DatabaseConfig from '$lib/components/admin/vectordb/DatabaseConfig.svelte';
 
 	const i18n = getContext('i18n');
 	const dispatch = createEventDispatcher();
@@ -71,17 +62,8 @@
 		hybrid: false
 	};
 
-	let dbConfig: DBConfig = DEFAULT_DB_CONFIG;
-
 	onMount(async () => {
 		try {
-			// Load vector database configuration
-			const vectorConfig = await getVectorDBConfig(localStorage.token);
-			dbConfig = {
-				type: vectorConfig.current_db,
-				config: DEFAULT_DB_CONFIG.config // Keep the default config structure since API doesn't return it
-			};
-
 			// Load embedding configuration
 			await setEmbeddingConfig();
 
@@ -112,23 +94,6 @@
 			toast.error($i18n.t('Failed to load configurations'));
 		}
 	});
-
-	const handleSaveVectorDBConfig = async (config: DBConfig) => {
-		try {
-			await updateVectorDBConfig(localStorage.token, config);
-			dbConfig = config;
-		} catch (error) {
-			throw new Error('Failed to update vector database configuration');
-		}
-	};
-
-	const handleTestVectorDBConnection = async (config: DBConfig): Promise<ConnectionStatus> => {
-		try {
-			return await testVectorDBConfig(localStorage.token, config);
-		} catch (error) {
-			throw new Error('Failed to test vector database connection');
-		}
-	};
 
 	const embeddingModelUpdateHandler = async () => {
 		if (embeddingEngine === '' && embeddingModel.split('/').length - 1 > 1) {
@@ -290,20 +255,6 @@
 	bind:show={showResetUploadDirConfirm}
 	on:confirm={async () => {
 		const res = await deleteAllFiles(localStorage.token).catch((error) => {
-			toast.error(error);
-			return null;
-		});
-
-		if (res) {
-			toast.success($i18n.t('Success'));
-		}
-	}}
-/>
-
-<ResetVectorDBConfirmDialog
-	bind:show={showResetConfirm}
-	on:confirm={() => {
-		const res = resetVectorDB(localStorage.token).catch((error) => {
 			toast.error(error);
 			return null;
 		});
@@ -497,6 +448,7 @@
 									class="w-4 h-4"
 								>
 									<path
+										fill-rule="evenodd"
 										d="M8.75 2.75a.75.75 0 0 0-1.5 0v5.69L5.03 6.22a.75.75 0 0 0-1.06 1.06l3.5 3.5a.75.75 0 0 0 1.06 0l3.5-3.5a.75.75 0 0 0-1.06-1.06L8.75 8.44V2.75Z"
 									/>
 									<path
@@ -574,6 +526,7 @@
 									class="w-4 h-4"
 								>
 									<path
+										fill-rule="evenodd"
 										d="M8.75 2.75a.75.75 0 0 0-1.5 0v5.69L5.03 6.22a.75.75 0 0 0-1.06 1.06l3.5 3.5a.75.75 0 0 0 1.06 0l3.5-3.5a.75.75 0 0 0-1.06-1.06L8.75 8.44V2.75Z"
 									/>
 									<path
@@ -585,34 +538,6 @@
 					</div>
 				</div>
 			{/if}
-		</div>
-
-		<hr class=" dark:border-gray-850" />
-
-		<div>
-			<DatabaseConfig 
-				bind:config={dbConfig}
-				onSave={async (config) => {
-					try {
-						await updateVectorDBConfig(localStorage.token, config);
-						toast.success($i18n.t('Vector database configuration updated successfully'));
-					} catch (error) {
-						toast.error(error.message);
-					}
-				}}
-				onTest={async (config) => {
-					try {
-						return await testVectorDBConfig(localStorage.token, config);
-					} catch (error) {
-						toast.error(error.message);
-						return {
-							isConnected: false,
-							error: error.message,
-							lastChecked: new Date()
-						};
-					}
-				}}
-			/>
 		</div>
 
 		<hr class=" dark:border-gray-850" />

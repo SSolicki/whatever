@@ -1,5 +1,6 @@
 import { RETRIEVAL_API_BASE_URL } from '$lib/constants';
-import type { DBConfig, VectorDBType, ConnectionStatus } from '$lib/types/vectordb';
+import type { DBConfig, VectorDBType, ConnectionStatus, VectorDBConfigResponse } from '$lib/types/vectordb';
+import type { VectorDBConfigResponse } from '$lib/types/api';
 
 export const getRAGConfig = async (token: string) => {
 	let error = null;
@@ -576,7 +577,7 @@ class VectorDBError extends Error {
 
 export const getVectorDBConfig = async (
 	token: string
-): Promise<{ current_db: VectorDBType; available_dbs: VectorDBType[] }> => {
+): Promise<VectorDBConfigResponse> => {
 	try {
         const res = await fetch(`${RETRIEVAL_API_BASE_URL}/config/vectordb`, {
             method: 'GET',
