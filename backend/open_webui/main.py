@@ -42,15 +42,24 @@ from open_webui.apps.ollama.main import (
     generate_chat_completion as generate_ollama_chat_completion,
     GenerateChatCompletionForm,
 )
+from open_webui.apps.anthropic.main import (
+    app as anthropic_app,
+    get_all_models as get_anthropic_models,
+    generate_chat_completion as generate_anthropic_chat_completion,
+)
 from open_webui.apps.openai.main import (
     app as openai_app,
     generate_chat_completion as generate_openai_chat_completion,
     get_all_models as get_openai_models,
     get_all_models_responses as get_openai_models_responses,
 )
+from open_webui.apps.google.main import (
+    app as google_app,
+    get_all_models as get_google_models,
+    generate_chat_completion as generate_google_chat_completion,
+)
 from open_webui.apps.retrieval.main import app as retrieval_app
 from open_webui.apps.retrieval.utils import get_sources_from_files
-
 
 from open_webui.apps.socket.main import (
     app as socket_app,
@@ -76,6 +85,8 @@ from open_webui.config import (
     ENABLE_ADMIN_EXPORT,
     ENABLE_OLLAMA_API,
     ENABLE_OPENAI_API,
+    ENABLE_ANTHROPIC_API,
+    ENABLE_GOOGLE_API,
     ENABLE_TAGS_GENERATION,
     ENV,
     FRONTEND_BUILD_DIR,
@@ -95,6 +106,7 @@ from open_webui.config import (
     WEBUI_NAME,
     AppConfig,
     reset_config,
+    ANTHROPIC_MODELS,
 )
 from open_webui.constants import TASKS
 from open_webui.env import (
@@ -199,6 +211,10 @@ app.state.config = AppConfig()
 
 app.state.config.ENABLE_OPENAI_API = ENABLE_OPENAI_API
 app.state.config.ENABLE_OLLAMA_API = ENABLE_OLLAMA_API
+app.state.config.ENABLE_ANTHROPIC_API = ENABLE_ANTHROPIC_API
+app.state.config.ANTHROPIC_MODELS = ANTHROPIC_MODELS
+
+app.state.config.ENABLE_GOOGLE_API = ENABLE_GOOGLE_API
 
 app.state.config.WEBHOOK_URL = WEBHOOK_URL
 
@@ -1022,6 +1038,8 @@ async def inspect_websocket(request: Request, call_next):
 app.mount("/ws", socket_app)
 app.mount("/ollama", ollama_app)
 app.mount("/openai", openai_app)
+app.mount("/anthropic", anthropic_app)
+app.mount("/api/v1/google", google_app)
 
 app.mount("/images/api/v1", images_app)
 app.mount("/audio/api/v1", audio_app)
@@ -1032,10 +1050,26 @@ app.mount("/api/v1", webui_app)
 webui_app.state.EMBEDDING_FUNCTION = retrieval_app.state.EMBEDDING_FUNCTION
 
 
+class ModelMeta(BaseModel):
+    description: str
+    profile_image_url: str
+
+class ModelParams(BaseModel):
+    pass
+
+class ModelForm(BaseModel):
+    id: str
+    name: str
+    meta: ModelMeta
+    params: ModelParams
+
+
 async def get_all_base_models():
     open_webui_models = []
     openai_models = []
     ollama_models = []
+    anthropic_models = []
+    google_models = []
 
     if app.state.config.ENABLE_OPENAI_API:
         openai_models = await get_openai_models()
@@ -1055,9 +1089,62 @@ async def get_all_base_models():
             for model in ollama_models["models"]
         ]
 
+    if app.state.config.ENABLE_GOOGLE_API:
+        google_models = await get_google_models()
+        google_models = [
+            {
+                "id": model["id"],
+                "name": model["name"],
+                "object": "model",
+                "created": int(time.time()),
+                "owned_by": "google",
+                "google": model,
+            }
+            for model in google_models["models"]
+        ]
+
+    if app.state.config.ENABLE_ANTHROPIC_API:
+        # Get models directly from config
+        from .config import ANTHROPIC_MODELS, ENABLE_ANTHROPIC_API
+
+        anthropic_models = ANTHROPIC_MODELS.value
+        log.debug(f"Anthropic models from config: {anthropic_models}")
+        
+        anthropic_models = [
+            {
+                "id": model["id"],
+                "name": model["name"],
+                "object": "model",
+                "created": int(time.time()),
+                "owned_by": "anthropic",
+                "anthropic": model,
+                "base_model": True
+            }
+            for model in anthropic_models
+        ]
+
+        # Insert Anthropic models into Models table
+        for model in anthropic_models:
+            try:
+                Models.insert_new_model(
+                    ModelForm(
+                        id=model["id"],
+                        name=model["name"],
+                        meta=ModelMeta(
+                            description=f"Anthropic {model['name']}",
+                            profile_image_url="/static/anthropic.png"
+                        ),
+                        params=ModelParams(),
+                        is_active=True
+                    ),
+                    user_id="system"
+                )
+            except Exception as e:
+                log.debug(f"Error inserting Anthropic model: {e}")
+
     open_webui_models = await get_open_webui_models()
 
-    models = open_webui_models + openai_models + ollama_models
+    models = open_webui_models + openai_models + ollama_models + anthropic_models + google_models
     return models
 
 
@@ -1282,7 +1369,7 @@ async def generate_chat_completions(
             model_info = Models.get_model_by_id(model_id)
             if not model_info:
                 raise HTTPException(
-                    status_code=404,
+                    status_code=status.HTTP_404_NOT_FOUND,
                     detail="Model not found",
                 )
             elif not (
@@ -1292,8 +1379,8 @@ async def generate_chat_completions(
                 )
             ):
                 raise HTTPException(
-                    status_code=403,
-                    detail="Model not found",
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="User does not have access to the model",
                 )
 
     if model["owned_by"] == "arena":
@@ -1360,10 +1447,132 @@ async def generate_chat_completions(
             )
         else:
             return convert_response_ollama_to_openai(response)
+    elif model["owned_by"] == "anthropic":
+        # Using /anthropic/api/chat endpoint
+        form_data = convert_payload_openai_to_ollama(form_data)
+        form_data = GenerateChatCompletionForm(**form_data)
+        response = await generate_anthropic_chat_completion(
+            form_data=form_data, user=user, bypass_filter=bypass_filter
+        )
+        if form_data.stream:
+            response.headers["content-type"] = "text/event-stream"
+            return StreamingResponse(
+                convert_streaming_response_ollama_to_openai(response),
+                headers=dict(response.headers),
+            )
+        else:
+            return convert_response_ollama_to_openai(response)
     else:
         return await generate_openai_chat_completion(
             form_data, user=user, bypass_filter=bypass_filter
         )
+
+
+@app.post("/api/chat/actions/{action_id}")
+async def chat_action(action_id: str, form_data: dict, user=Depends(get_verified_user)):
+    if "." in action_id:
+        action_id, sub_action_id = action_id.split(".")
+    else:
+        sub_action_id = None
+
+    action = Functions.get_function_by_id(action_id)
+    if not action:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Action not found",
+        )
+
+    model_list = await get_all_models()
+    models = {model["id"]: model for model in model_list}
+
+    data = form_data
+    model_id = data["model"]
+
+    if model_id not in models:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Model not found",
+        )
+    model = models[model_id]
+
+    __event_emitter__ = get_event_emitter(
+        {
+            "chat_id": data["chat_id"],
+            "message_id": data["id"],
+            "session_id": data["session_id"],
+        }
+    )
+    __event_call__ = get_event_call(
+        {
+            "chat_id": data["chat_id"],
+            "message_id": data["id"],
+            "session_id": data["session_id"],
+        }
+    )
+
+    if action_id in webui_app.state.FUNCTIONS:
+        function_module = webui_app.state.FUNCTIONS[action_id]
+    else:
+        function_module, _, _ = load_function_module_by_id(action_id)
+        webui_app.state.FUNCTIONS[action_id] = function_module
+
+    if hasattr(function_module, "valves") and hasattr(function_module, "Valves"):
+        valves = Functions.get_function_valves_by_id(action_id)
+        function_module.valves = function_module.Valves(
+            **(valves if valves else {})
+        )
+
+    if hasattr(function_module, "action"):
+        try:
+            action = function_module.action
+
+            # Get the signature of the function
+            sig = inspect.signature(action)
+            params = {"body": data} | {
+                k: v
+                for k, v in {
+                    **extra_params,
+                    "__model__": model,
+                    "__id__": sub_action_id if sub_action_id is not None else action_id,
+                    "__event_emitter__": __event_emitter__,
+                    "__event_call__": __event_call__,
+                }.items()
+                if k in sig.parameters
+            }
+
+            if "__user__" in sig.parameters:
+                __user__ = {
+                    "id": user.id,
+                    "email": user.email,
+                    "name": user.name,
+                    "role": user.role,
+                }
+
+                try:
+                    if hasattr(function_module, "UserValves"):
+                        __user__["valves"] = function_module.UserValves(
+                            **Functions.get_user_valves_by_id_and_user_id(
+                                action_id, user.id
+                            )
+                        )
+                except Exception as e:
+                    print(e)
+
+                params = {**params, "__user__": __user__}
+
+            if inspect.iscoroutinefunction(action):
+                data = await action(**params)
+            else:
+                data = action(**params)
+
+        except Exception as e:
+            print(f"Error: {e}")
+            return JSONResponse(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                content={"detail": str(e)},
+            )
+
+    return data
 
 
 @app.post("/api/chat/completed")
@@ -1415,18 +1624,9 @@ async def chat_completed(form_data: dict, user=Depends(get_verified_user)):
             print(f"Connection error: {e}")
 
             if r is not None:
-                try:
-                    res = r.json()
-                    if "detail" in res:
-                        return JSONResponse(
-                            status_code=r.status_code,
-                            content=res,
-                        )
-                except Exception:
-                    pass
-
-            else:
-                pass
+                res = r.json()
+                if "detail" in res:
+                    raise Exception(r.status_code, res["detail"])
 
     __event_emitter__ = get_event_emitter(
         {
@@ -1541,114 +1741,6 @@ async def chat_completed(form_data: dict, user=Depends(get_verified_user)):
     return data
 
 
-@app.post("/api/chat/actions/{action_id}")
-async def chat_action(action_id: str, form_data: dict, user=Depends(get_verified_user)):
-    if "." in action_id:
-        action_id, sub_action_id = action_id.split(".")
-    else:
-        sub_action_id = None
-
-    action = Functions.get_function_by_id(action_id)
-    if not action:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Action not found",
-        )
-
-    model_list = await get_all_models()
-    models = {model["id"]: model for model in model_list}
-
-    data = form_data
-    model_id = data["model"]
-
-    if model_id not in models:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Model not found",
-        )
-    model = models[model_id]
-
-    __event_emitter__ = get_event_emitter(
-        {
-            "chat_id": data["chat_id"],
-            "message_id": data["id"],
-            "session_id": data["session_id"],
-        }
-    )
-    __event_call__ = get_event_call(
-        {
-            "chat_id": data["chat_id"],
-            "message_id": data["id"],
-            "session_id": data["session_id"],
-        }
-    )
-
-    if action_id in webui_app.state.FUNCTIONS:
-        function_module = webui_app.state.FUNCTIONS[action_id]
-    else:
-        function_module, _, _ = load_function_module_by_id(action_id)
-        webui_app.state.FUNCTIONS[action_id] = function_module
-
-    if hasattr(function_module, "valves") and hasattr(function_module, "Valves"):
-        valves = Functions.get_function_valves_by_id(action_id)
-        function_module.valves = function_module.Valves(**(valves if valves else {}))
-
-    if hasattr(function_module, "action"):
-        try:
-            action = function_module.action
-
-            # Get the signature of the function
-            sig = inspect.signature(action)
-            params = {"body": data}
-
-            # Extra parameters to be passed to the function
-            extra_params = {
-                "__model__": model,
-                "__id__": sub_action_id if sub_action_id is not None else action_id,
-                "__event_emitter__": __event_emitter__,
-                "__event_call__": __event_call__,
-            }
-
-            # Add extra params in contained in function signature
-            for key, value in extra_params.items():
-                if key in sig.parameters:
-                    params[key] = value
-
-            if "__user__" in sig.parameters:
-                __user__ = {
-                    "id": user.id,
-                    "email": user.email,
-                    "name": user.name,
-                    "role": user.role,
-                }
-
-                try:
-                    if hasattr(function_module, "UserValves"):
-                        __user__["valves"] = function_module.UserValves(
-                            **Functions.get_user_valves_by_id_and_user_id(
-                                action_id, user.id
-                            )
-                        )
-                except Exception as e:
-                    print(e)
-
-                params = {**params, "__user__": __user__}
-
-            if inspect.iscoroutinefunction(action):
-                data = await action(**params)
-            else:
-                data = action(**params)
-
-        except Exception as e:
-            print(f"Error: {e}")
-            return JSONResponse(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                content={"detail": str(e)},
-            )
-
-    return data
-
-
 ##################################
 #
 # Task Endpoints
@@ -1745,7 +1837,6 @@ async def generate_title(form_data: dict, user=Depends(get_verified_user)):
         app.state.config.TASK_MODEL_EXTERNAL,
         models,
     )
-
     log.debug(
         f"generating chat title using model {task_model_id} for user {user.email} "
     )
@@ -1780,13 +1871,6 @@ Artificial Intelligence in Healthcare
         "model": task_model_id,
         "messages": [{"role": "user", "content": content}],
         "stream": False,
-        **(
-            {"max_tokens": 50}
-            if models[task_model_id]["owned_by"] == "ollama"
-            else {
-                "max_completion_tokens": 50,
-            }
-        ),
         "metadata": {
             "task": str(TASKS.TITLE_GENERATION),
             "task_body": form_data,
@@ -1937,7 +2021,6 @@ async def generate_queries(form_data: dict, user=Depends(get_verified_user)):
         app.state.config.TASK_MODEL_EXTERNAL,
         models,
     )
-
     log.debug(
         f"generating {type} queries using model {task_model_id} for user {user.email}"
     )
@@ -2035,7 +2118,6 @@ Message: """{{prompt}}"""
         "metadata": {"task": str(TASKS.EMOJI_GENERATION), "task_body": form_data},
     }
 
-    # Handle pipeline filters
     try:
         payload = filter_pipeline(payload, user, models)
     except Exception as e:
@@ -2182,7 +2264,9 @@ async def upload_pipeline(
 
         with open(file_path, "rb") as f:
             files = {"file": f}
-            r = requests.post(f"{url}/pipelines/upload", headers=headers, files=files)
+            r = requests.post(
+                f"{url}/pipelines/upload", headers=headers, files=files
+            )
 
         r.raise_for_status()
         data = r.json()
@@ -2241,6 +2325,7 @@ async def add_pipeline(form_data: AddPipelineForm, user=Depends(get_admin_user))
         print(f"Connection error: {e}")
 
         detail = "Pipeline not found"
+
         if r is not None:
             try:
                 res = r.json()
@@ -2316,6 +2401,7 @@ async def get_pipelines(urlIdx: Optional[int] = None, user=Depends(get_admin_use
         print(f"Connection error: {e}")
 
         detail = "Pipeline not found"
+
         if r is not None:
             try:
                 res = r.json()

@@ -6,6 +6,8 @@
 	import { models } from '$lib/stores';
 	import { verifyOpenAIConnection } from '$lib/apis/openai';
 	import { verifyOllamaConnection } from '$lib/apis/ollama';
+	import { verifyAnthropicConnection } from '$lib/apis/anthropic';
+	import { verifyGoogleConnection } from '$lib/apis/google';
 
 	import Modal from '$lib/components/common/Modal.svelte';
 	import Plus from '$lib/components/icons/Plus.svelte';
@@ -21,6 +23,8 @@
 	export let show = false;
 	export let edit = false;
 	export let ollama = false;
+	export let anthropic = false;
+	export let google = false;
 
 	export let connection = null;
 
@@ -55,9 +59,33 @@
 		}
 	};
 
+	const verifyAnthropicHandler = async () => {
+		const res = await verifyAnthropicConnection(localStorage.token, url, key).catch((error) => {
+			toast.error(error);
+		});
+
+		if (res) {
+			toast.success($i18n.t('Server connection verified'));
+		}
+	};
+
+	const verifyGoogleHandler = async () => {
+		const res = await verifyGoogleConnection(localStorage.token, url, key).catch((error) => {
+			toast.error(error);
+		});
+
+		if (res) {
+			toast.success($i18n.t('Server connection verified'));
+		}
+	};
+
 	const verifyHandler = () => {
 		if (ollama) {
 			verifyOllamaHandler();
+		} else if (anthropic) {
+			verifyAnthropicHandler();
+		} else if (google) {
+			verifyGoogleHandler();
 		} else {
 			verifyOpenAIHandler();
 		}
@@ -187,11 +215,11 @@
 										xmlns="http://www.w3.org/2000/svg"
 										viewBox="0 0 20 20"
 										fill="currentColor"
-										class="w-4 h-4"
+										class="w-5 h-5"
 									>
 										<path
 											fill-rule="evenodd"
-											d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z"
+											d="M16.403 12.652a3 3 0 000-5.304 3 3 0 00-3.75-3.751 3 3 0 00-5.305 0 3 3 0 00-3.751 3.75 3 3 0 000 5.305 3 3 0 003.75 3.751 3 3 0 005.305 0 3 3 0 003.751-3.75zm-2.546-4.46a.75.75 0 00-1.214-.883l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
 											clip-rule="evenodd"
 										/>
 									</svg>
@@ -214,6 +242,7 @@
 										className="w-full text-sm bg-transparent placeholder:text-gray-300 dark:placeholder:text-gray-700 outline-none"
 										bind:value={key}
 										placeholder={$i18n.t('API Key')}
+										autocomplete="off"
 										required={!ollama}
 									/>
 								</div>

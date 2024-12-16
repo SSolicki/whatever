@@ -52,17 +52,31 @@ export const temporaryChatEnabled = writable(false);
 export const scrollPaginationEnabled = writable(false);
 export const currentChatPage = writable(1);
 
-export type Model = OpenAIModel | OllamaModel;
+export type Model = OpenAIModel | AnthropicModel | GoogleModel | OllamaModel;
 
 type BaseModel = {
 	id: string;
 	name: string;
 	info?: ModelConfig;
-	owned_by: 'ollama' | 'openai' | 'arena';
+	owned_by: 'ollama' | 'openai' | 'anthropic' | 'google' | 'arena';
 };
 
 export interface OpenAIModel extends BaseModel {
 	owned_by: 'openai';
+	external: boolean;
+	source?: string;
+}
+
+export interface AnthropicModel extends BaseModel {
+	owned_by: 'anthropic';
+	global: GlobalModelConfig;
+	external: boolean;
+	source?: string;
+}
+
+export interface GoogleModel extends BaseModel {
+	owned_by: 'google';
+	global: GlobalModelConfig;
 	external: boolean;
 	source?: string;
 }

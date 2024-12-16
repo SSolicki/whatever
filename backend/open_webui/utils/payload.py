@@ -88,6 +88,26 @@ def apply_model_params_to_body_ollama(params: dict, form_data: dict) -> dict:
     return form_data
 
 
+def apply_model_params_to_body_google(params: dict, form_data: dict) -> dict:
+    """Apply model parameters to the request body for Google API."""
+    if not params:
+        return form_data
+
+    # Map common parameters
+    param_mappings = {
+        "temperature": "temperature",
+        "max_tokens": "maxOutputTokens",
+        "top_p": "topP",
+        "top_k": "topK",
+    }
+
+    for param_name, api_name in param_mappings.items():
+        if param_name in params:
+            form_data[api_name] = params[param_name]
+
+    return form_data
+
+
 def convert_messages_openai_to_ollama(messages: list[dict]) -> list[dict]:
     ollama_messages = []
 

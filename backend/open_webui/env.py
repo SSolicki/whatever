@@ -82,9 +82,11 @@ log_sources = [
     "MODELS",
     "OLLAMA",
     "OPENAI",
+    "ANTHROPIC",
     "RAG",
     "WEBHOOK",
     "SOCKET",
+    "GOOGLE",
 ]
 
 SRC_LOG_LEVELS = {}

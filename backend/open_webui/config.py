@@ -705,6 +705,93 @@ except Exception:
 OPENAI_API_BASE_URL = "https://api.openai.com/v1"
 
 ####################################
+# GOOGLE API
+####################################
+
+ENABLE_GOOGLE_API = PersistentConfig(
+    "ENABLE_GOOGLE_API",
+    "google.enable",
+    os.environ.get("ENABLE_GOOGLE_API", "False").lower() == "true",
+)
+
+GOOGLE_API_BASE_URLS = PersistentConfig(
+    "GOOGLE_API_BASE_URLS",
+    "google.base_urls",
+    [url.strip() for url in os.environ.get("GOOGLE_API_BASE_URLS", "https://api.openai.com/v1").split(",")],
+)
+
+GOOGLE_API_KEYS = PersistentConfig(
+    "GOOGLE_API_KEYS",
+    "google.api_keys",
+    [key.strip() for key in os.environ.get("GOOGLE_API_KEYS", "").split(",")],
+)
+
+GOOGLE_API_CONFIGS = PersistentConfig(
+    "GOOGLE_API_CONFIGS",
+    "google.api_configs",
+    {},
+)
+####################################
+# Anthropic API config
+####################################
+
+ENABLE_ANTHROPIC_API = PersistentConfig(
+    "ENABLE_ANTHROPIC_API",
+    "anthropic.enable",
+    os.environ.get("ENABLE_ANTHROPIC_API", "False").lower() == "true",
+)
+
+ANTHROPIC_API_BASE_URLS = PersistentConfig(
+    "ANTHROPIC_API_BASE_URLS",
+    "anthropic.base_urls",
+    [url.strip() for url in os.environ.get("ANTHROPIC_API_BASE_URLS", "https://api.anthropic.com").split(",")],
+)
+
+ANTHROPIC_API_KEYS = PersistentConfig(
+    "ANTHROPIC_API_KEYS",
+    "anthropic.api_keys",
+    [key.strip() for key in os.environ.get("ANTHROPIC_API_KEYS", "").split(",")],
+)
+
+ANTHROPIC_API_CONFIGS = PersistentConfig(
+    "ANTHROPIC_API_CONFIGS",
+    "anthropic.api_configs",
+    {},
+)
+
+ANTHROPIC_MODELS = PersistentConfig(
+    "ANTHROPIC_MODELS",
+    "anthropic.models",
+    [
+        {
+            "id": "claude-3-opus-20240229",
+            "name": "Claude 3 Opus",
+            "owned_by": "anthropic",
+            "tokens_per_message": 200000,
+            "tokens_per_request": 4096,
+            "max_tokens": 4096,
+        },
+        {
+            "id": "claude-3-5-sonnet-20241022",
+            "name": "Claude 3.5 Sonnet",
+            "owned_by": "anthropic",
+            "tokens_per_message": 200000,
+            "tokens_per_request": 4096,
+            "max_tokens": 4096,
+        },
+        {
+            "id": "claude-3-5-haiku-20241022",
+            "name": "Claude 3.5 Haiku",
+            "owned_by": "anthropic",
+            "tokens_per_message": 200000,
+            "tokens_per_request": 4096,
+            "max_tokens": 4096,
+        }
+    ],
+)
+
+
+####################################
 # WEBUI
 ####################################
 
