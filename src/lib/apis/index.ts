@@ -123,8 +123,8 @@ export const getTaskConfig = async (token: string = '') => {
 			return res.json();
 		})
 		.catch((err) => {
-			console.log(err);
 			error = err;
+			console.log(err);
 			return null;
 		});
 
@@ -191,6 +191,34 @@ export const generateTitle = async (
 	})
 		.then(async (res) => {
 			if (!res.ok) throw await res.json();
+			const contentType = res.headers.get('content-type');
+			if (contentType && contentType.includes('text/event-stream')) {
+				// Handle SSE response
+				const text = await res.text();
+				// Split into chunks and find the last valid JSON chunk
+				const chunks = text.split('\n\n').filter(chunk => chunk.trim());
+				// Process chunks from last to first to find the last valid JSON
+				for (let i = chunks.length - 1; i >= 0; i--) {
+					const chunk = chunks[i];
+					if (chunk === 'data: [DONE]') continue;
+					try {
+						const jsonStr = chunk.replace(/^data: /, '').trim();
+						const parsed = JSON.parse(jsonStr);
+						if (parsed.choices?.[0]?.delta?.content) {
+							return {
+								choices: [{
+									message: {
+										content: parsed.choices[0].delta.content
+									}
+								}]
+							};
+						}
+					} catch (e) {
+						continue;
+					}
+				}
+				throw new Error('No valid JSON response found in stream');
+			}
 			return res.json();
 		})
 		.catch((err) => {
@@ -231,6 +259,35 @@ export const generateTags = async (
 	})
 		.then(async (res) => {
 			if (!res.ok) throw await res.json();
+			const contentType = res.headers.get('content-type');
+			if (contentType && contentType.includes('text/event-stream')) {
+				// Handle SSE response
+				const text = await res.text();
+				// Split into chunks and find the last valid JSON chunk
+				const chunks = text.split('\n\n').filter(chunk => chunk.trim());
+				// Process chunks from last to first to find the last valid JSON
+				let fullContent = '';
+				for (let i = 0; i < chunks.length; i++) {
+					const chunk = chunks[i];
+					if (chunk === 'data: [DONE]') continue;
+					try {
+						const jsonStr = chunk.replace(/^data: /, '').trim();
+						const parsed = JSON.parse(jsonStr);
+						if (parsed.choices?.[0]?.delta?.content) {
+							fullContent += parsed.choices[0].delta.content;
+						}
+					} catch (e) {
+						continue;
+					}
+				}
+				return {
+					choices: [{
+						message: {
+							content: fullContent
+						}
+					}]
+				};
+			}
 			return res.json();
 		})
 		.catch((err) => {
@@ -250,7 +307,7 @@ export const generateTags = async (
 		const response = res?.choices[0]?.message?.content ?? '';
 
 		// Step 2: Attempt to fix common JSON format issues like single quotes
-		const sanitizedResponse = response.replace(/['‘’`]/g, '"'); // Convert single quotes to double quotes for valid JSON
+		const sanitizedResponse = response.replace(/['''`]/g, '"'); // Convert single quotes to double quotes for valid JSON
 
 		// Step 3: Find the relevant JSON block within the response
 		const jsonStartIndex = sanitizedResponse.indexOf('{');
