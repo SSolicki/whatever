@@ -717,7 +717,7 @@ ENABLE_GOOGLE_API = PersistentConfig(
 GOOGLE_API_BASE_URLS = PersistentConfig(
     "GOOGLE_API_BASE_URLS",
     "google.base_urls",
-    [url.strip() for url in os.environ.get("GOOGLE_API_BASE_URLS", "https://api.openai.com/v1").split(",")],
+    [url.strip() for url in os.environ.get("GOOGLE_API_BASE_URLS", "https://generativelanguage.googleapis.com").split(",")],
 )
 
 GOOGLE_API_KEYS = PersistentConfig(

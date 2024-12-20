@@ -98,6 +98,32 @@
 
 	const updateGoogleHandler = async () => {
 		if (ENABLE_GOOGLE_API !== null) {
+			GOOGLE_API_BASE_URLS = GOOGLE_API_BASE_URLS.filter(
+				(url, urlIdx) => GOOGLE_API_BASE_URLS.indexOf(url) === urlIdx && url !== ''
+			).map((url) => url.replace(/\/$/, ''));
+
+			if (GOOGLE_API_BASE_URLS.length === 0) {
+				ENABLE_GOOGLE_API = false;
+				toast.info($i18n.t('Google API disabled'));
+				return;
+			}
+
+			// Check if API KEYS length is same than API URLS length
+			if (GOOGLE_API_KEYS.length !== GOOGLE_API_BASE_URLS.length) {
+				// if there are more keys than urls, remove the extra keys
+				if (GOOGLE_API_KEYS.length > GOOGLE_API_BASE_URLS.length) {
+					GOOGLE_API_KEYS = GOOGLE_API_KEYS.slice(0, GOOGLE_API_BASE_URLS.length);
+				}
+
+				// if there are more urls than keys, add empty keys
+				if (GOOGLE_API_KEYS.length < GOOGLE_API_BASE_URLS.length) {
+					const diff = GOOGLE_API_BASE_URLS.length - GOOGLE_API_KEYS.length;
+					for (let i = 0; i < diff; i++) {
+						GOOGLE_API_KEYS.push('');
+					}
+				}
+			}
+
 			const res = await updateGoogleConfig(localStorage.token, {
 				ENABLE_GOOGLE_API: ENABLE_GOOGLE_API,
 				GOOGLE_API_BASE_URLS: GOOGLE_API_BASE_URLS,
@@ -341,7 +367,7 @@
 	}}
 >
 	<div class=" overflow-y-scroll scrollbar-hidden h-full">
-		{#if ENABLE_OPENAI_API !== null && ENABLE_OLLAMA_API !== null && ENABLE_ANTHROPIC_API !== null && ENABLE_GOOGLE_API !== null}
+		{#if ENABLE_OPENAI_API !== null || ENABLE_OLLAMA_API !== null || ENABLE_ANTHROPIC_API !== null || ENABLE_GOOGLE_API !== null}
 			<div class="my-2">
 				<div class="mt-2 space-y-2 pr-1.5">
 					<div class="flex justify-between items-center text-sm">
@@ -542,44 +568,66 @@
 				<div class="pr-1.5 my-2">
 					<div class="flex justify-between items-center text-sm mb-2">
 						<div class="  font-medium">{$i18n.t('Google API')}</div>
-
+	
 						<div class="mt-1">
 							<Switch
-								bind:checked={ENABLE_GOOGLE_API}
-								on:change={() => {
+								bind:state={ENABLE_GOOGLE_API}
+								on:change={async () => {
 									updateGoogleHandler();
 								}}
 							/>
 						</div>
 					</div>
-
+	
 					{#if ENABLE_GOOGLE_API}
-						<div class="space-y-2">
-							{#each GOOGLE_API_BASE_URLS as url, urlIdx}
-								<GoogleConnection
-									bind:url={GOOGLE_API_BASE_URLS[urlIdx]}
-									bind:key={GOOGLE_API_KEYS[urlIdx]}
-									bind:config={GOOGLE_API_CONFIGS[url]}
-									onDelete={() => {
-										GOOGLE_API_BASE_URLS = GOOGLE_API_BASE_URLS.filter((_, idx) => idx !== urlIdx);
-										GOOGLE_API_KEYS = GOOGLE_API_KEYS.filter((_, idx) => idx !== urlIdx);
-										updateGoogleHandler();
-									}}
-									onSubmit={() => {
-										updateGoogleHandler();
-									}}
-								/>
-							{/each}
-
-							<button
-								class="px-3.5 py-1.5 text-sm font-medium bg-white dark:bg-black hover:bg-gray-100 dark:hover:bg-gray-900 text-black dark:text-white transition rounded-full flex flex-row space-x-1 items-center"
-								on:click={() => {
-									showAddGoogleConnectionModal = true;
-								}}
-							>
-								<Plus className="size-4" />
-								<div>{$i18n.t('Add Connection')}</div>
-							</button>
+						<hr class=" border-gray-50 dark:border-gray-850 my-2" />
+	
+						<div class="">
+							<div class="flex justify-between items-center">
+								<div class="font-medium">{$i18n.t('Manage Google API Connections')}</div>
+	
+								<Tooltip content={$i18n.t(`Add Connection`)}>
+									<button
+										class="px-1"
+										on:click={() => {
+											showAddGoogleConnectionModal = true;
+										}}
+										type="button"
+									>
+										<Plus />
+									</button>
+								</Tooltip>
+							</div>
+	
+							<div class="flex w-full gap-1.5">
+								<div class="flex-1 flex flex-col gap-1.5 mt-1.5">
+									{#each GOOGLE_API_BASE_URLS as url, idx}
+										<GoogleConnection
+											bind:url
+											bind:key={GOOGLE_API_KEYS[idx]}
+											bind:config={GOOGLE_API_CONFIGS[url]}
+											onSubmit={() => {
+												updateGoogleHandler();
+											}}
+											onDelete={() => {
+												GOOGLE_API_BASE_URLS = GOOGLE_API_BASE_URLS.filter((url, urlIdx) => idx !== urlIdx);
+												GOOGLE_API_KEYS = GOOGLE_API_KEYS.filter((key, keyIdx) => idx !== keyIdx);
+											}}
+										/>
+									{/each}
+								</div>
+							</div>
+	
+							<div class="mt-1 text-xs text-gray-400 dark:text-gray-500">
+								{$i18n.t('Trouble accessing Google?')}
+								<a
+									class=" text-gray-300 font-medium underline"
+									href="https://github.com/open-webui/open-webui#troubleshooting"
+									target="_blank"
+								>
+									{$i18n.t('Click here for help.')}
+								</a>
+							</div>
 						</div>
 					{/if}
 				</div>

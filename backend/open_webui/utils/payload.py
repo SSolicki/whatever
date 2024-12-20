@@ -93,17 +93,25 @@ def apply_model_params_to_body_google(params: dict, form_data: dict) -> dict:
     if not params:
         return form_data
 
-    # Map common parameters
+    # Map parameters according to Google's API specification
     param_mappings = {
         "temperature": "temperature",
-        "max_tokens": "maxOutputTokens",
-        "top_p": "topP",
-        "top_k": "topK",
+        "max_tokens": "maxOutputTokens",  # Changed from max_tokens to maxOutputTokens
+        "top_p": "topP",                  # Changed from top_p to topP
+        "top_k": "topK",                  # Changed from top_k to topK
+        "stop": "stopSequences"           # Changed from stop to stopSequences
     }
 
-    for param_name, api_name in param_mappings.items():
-        if param_name in params:
-            form_data[api_name] = params[param_name]
+    # Create or update generationConfig
+    generation_config = form_data.get("generationConfig", {})
+    
+    for openai_param, google_param in param_mappings.items():
+        if (value := params.get(openai_param)) is not None:
+            generation_config[google_param] = value
+
+    # Update or create generationConfig in form_data
+    if generation_config:
+        form_data["generationConfig"] = generation_config
 
     return form_data
 
@@ -201,3 +209,66 @@ def convert_payload_openai_to_ollama(openai_payload: dict) -> dict:
         ollama_payload["options"] = ollama_options
 
     return ollama_payload
+
+
+def convert_messages_openai_to_google(messages: list[dict]) -> list[dict]:
+    """
+    Converts OpenAI-style messages into Google API-compatible format.
+
+    Args:
+        messages (list[dict]): List of OpenAI-style messages.
+
+    Returns:
+        list[dict]: List of Google API-compatible messages.
+    """
+    google_messages = []
+
+    for message in messages:
+        # Map OpenAI role to Google-compatible roles
+        role = "user" if message["role"] == "user" else "model"  # Map assistant/system to model if needed
+
+        # Create the Google-compatible message structure
+        google_message = {
+            "role": role,
+            "parts": [{"text": message.get("content", "")}]
+        }
+
+        # Append to the resulting Google messages list
+        google_messages.append(google_message)
+
+    return google_messages
+
+
+def convert_payload_openai_to_google(openai_payload: dict) -> dict:
+    """
+    Converts OpenAI payload to Google API-compatible format.
+
+    Args:
+        openai_payload (dict): The OpenAI-formatted payload.
+
+    Returns:
+        dict: The Google API-compatible payload.
+    """
+    google_payload = {
+        "model": openai_payload.get("model"),  # Preserve the model ID
+        "messages": convert_messages_openai_to_google(openai_payload.get("messages", []))
+    }
+
+    # Map generation configuration
+    generation_config = {}
+    if "temperature" in openai_payload:
+        generation_config["temperature"] = openai_payload["temperature"]
+    if "top_p" in openai_payload:
+        generation_config["topP"] = openai_payload["top_p"]
+    if "top_k" in openai_payload:
+        generation_config["topK"] = openai_payload["top_k"]
+    if "max_tokens" in openai_payload:
+        generation_config["maxOutputTokens"] = openai_payload["max_tokens"]
+    if "stop" in openai_payload:
+        generation_config["stopSequences"] = openai_payload["stop"]
+
+    # Add generation config if present
+    if generation_config:
+        google_payload["generationConfig"] = generation_config
+
+    return google_payload

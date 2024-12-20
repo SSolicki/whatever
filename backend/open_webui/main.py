@@ -129,10 +129,15 @@ from open_webui.utils.misc import (
     prepend_to_first_user_message_content,
 )
 from open_webui.utils.oauth import oauth_manager
-from open_webui.utils.payload import convert_payload_openai_to_ollama
+from open_webui.utils.payload import (
+    convert_payload_openai_to_ollama,
+    convert_payload_openai_to_google,
+)
 from open_webui.utils.response import (
     convert_response_ollama_to_openai,
     convert_streaming_response_ollama_to_openai,
+    convert_response_google_to_openai,
+    convert_streaming_response_google_to_openai,
 )
 from open_webui.utils.security_headers import SecurityHeadersMiddleware
 from open_webui.utils.task import (
@@ -1039,7 +1044,7 @@ app.mount("/ws", socket_app)
 app.mount("/ollama", ollama_app)
 app.mount("/openai", openai_app)
 app.mount("/anthropic", anthropic_app)
-app.mount("/api/v1/google", google_app)
+app.mount("/google", google_app)
 
 app.mount("/images/api/v1", images_app)
 app.mount("/audio/api/v1", audio_app)
@@ -1088,20 +1093,10 @@ async def get_all_base_models():
             }
             for model in ollama_models["models"]
         ]
-
+        
     if app.state.config.ENABLE_GOOGLE_API:
         google_models = await get_google_models()
-        google_models = [
-            {
-                "id": model["id"],
-                "name": model["name"],
-                "object": "model",
-                "created": int(time.time()),
-                "owned_by": "google",
-                "google": model,
-            }
-            for model in google_models["models"]
-        ]
+        google_models = google_models["data"]
 
     if app.state.config.ENABLE_ANTHROPIC_API:
         # Get models directly from config
@@ -1178,9 +1173,8 @@ async def get_all_models():
 
                         action_ids = []
                         if "info" in model and "meta" in model["info"]:
-                            action_ids.extend(
-                                model["info"]["meta"].get("actionIds", [])
-                            )
+                            action_ids.extend(model["info"]["meta"].get("actionIds", []))
+                            action_ids = list(set(action_ids))
 
                         model["action_ids"] = action_ids
                     else:
@@ -1462,6 +1456,20 @@ async def generate_chat_completions(
             )
         else:
             return convert_response_ollama_to_openai(response)
+    elif model["owned_by"] == "google":
+        # Using /google/api/chat endpoint
+        form_data = convert_payload_openai_to_google(form_data)
+        response = await generate_google_chat_completion(
+            form_data=form_data, user=user, bypass_filter=bypass_filter
+        )
+        if form_data.get("stream", False):
+            response.headers["content-type"] = "text/event-stream"
+            return StreamingResponse(
+                convert_streaming_response_google_to_openai(response),
+                headers=dict(response.headers),
+            )
+        else:
+            return convert_response_google_to_openai(response)
     else:
         return await generate_openai_chat_completion(
             form_data, user=user, bypass_filter=bypass_filter
@@ -1647,7 +1655,7 @@ async def chat_completed(form_data: dict, user=Depends(get_verified_user)):
     def get_priority(function_id):
         function = Functions.get_function_by_id(function_id)
         if function is not None and hasattr(function, "valves"):
-            # TODO: Fix FunctionModel to include vavles
+            # TODO: Fix FunctionModel
             return (function.valves if function.valves else {}).get("priority", 0)
         return 0
 
