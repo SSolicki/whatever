@@ -34,7 +34,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from pydantic import BaseModel
 from starlette.background import BackgroundTask
-import google.generativeai as genai
 
 from open_webui.utils.payload import (
     apply_model_params_to_body_google,

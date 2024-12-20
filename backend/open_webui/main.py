@@ -1655,7 +1655,7 @@ async def chat_completed(form_data: dict, user=Depends(get_verified_user)):
     def get_priority(function_id):
         function = Functions.get_function_by_id(function_id)
         if function is not None and hasattr(function, "valves"):
-            # TODO: Fix FunctionModel
+            # TODO: Fix FunctionModel to include vavles
             return (function.valves if function.valves else {}).get("priority", 0)
         return 0
 
