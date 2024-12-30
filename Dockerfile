@@ -27,7 +27,8 @@ ARG BUILD_HASH
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm ci && \
+    npm install @rollup/rollup-linux-x64-musl --no-save
 
 COPY . .
 ENV APP_BUILD_HASH=${BUILD_HASH}

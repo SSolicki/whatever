@@ -1,0 +1,47 @@
+# syntax=docker/dockerfile:1
+FROM python:3.11-slim-bookworm AS base
+
+# Arguments for embedding models, CUDA, etc.
+ARG USE_CUDA=false
+ARG USE_OLLAMA=false
+ARG USE_CUDA_VER=cu121
+ARG USE_EMBEDDING_MODEL=sentence-transformers/all-MiniLM-L6-v2
+ARG USE_RERANKING_MODEL=""
+ARG TIKTOKEN_ENCODING_NAME="cl100k_base"
+ARG UID=0
+ARG GID=0
+
+ENV RAG_EMBEDDING_MODEL=$USE_EMBEDDING_MODEL \
+    RAG_RERANKING_MODEL=$USE_RERANKING_MODEL \
+    SENTENCE_TRANSFORMERS_HOME=/app/backend/data/cache/embedding/models \
+    HF_HOME=/app/backend/data/cache/embedding/models \
+    WHISPER_MODEL=base \
+    WHISPER_MODEL_DIR=/app/backend/data/cache/whisper/models \
+    TIKTOKEN_ENCODING_NAME=$TIKTOKEN_ENCODING_NAME
+
+WORKDIR /app/backend
+
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    git build-essential pandoc netcat-openbsd curl jq ffmpeg libsm6 libxext6 gcc python3-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+# Copy and install Python requirements
+COPY backend/requirements.txt ./requirements.txt
+RUN pip3 install uv && \
+    pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu && \
+    uv pip install --system -r requirements.txt && \
+    # Pre-fetch embedding and whisper models
+    python -c "import os; from sentence_transformers import SentenceTransformer; SentenceTransformer(os.environ['RAG_EMBEDDING_MODEL'], device='cpu')" && \
+    python -c "import os; from faster_whisper import WhisperModel; WhisperModel(os.environ['WHISPER_MODEL'], device='cpu', compute_type='int8', download_root=os.environ['WHISPER_MODEL_DIR'])" && \
+    python -c "import os; import tiktoken; tiktoken.get_encoding(os.environ['TIKTOKEN_ENCODING_NAME'])"
+
+# Switch to non-root user if desired
+RUN if [ $UID -ne 0 ]; then \
+    if [ $GID -ne 0 ]; then addgroup --gid $GID app; fi; \
+    adduser --uid $UID --gid $GID --home /root --disabled-password --no-create-home app; \
+    chown -R $UID:$GID /app ; \
+    fi
+
+USER $UID:$GID
